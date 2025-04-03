@@ -1,0 +1,7 @@
+Flask
+pandas
+pdfplumber
+PyMuPDF
+pdfminer.six
+beautifulsoup4
+gunicorn

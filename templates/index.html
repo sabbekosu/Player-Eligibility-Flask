@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Results - IM Team Club Player Checker</title>
+</head>
+<body>
+  <h1>Results - IM Team Club Player Checker</h1>
+  {% if violations %}
+    <h2 style="color:red;">Teams Violating Club Player Limit (More than {{ max_club_players }} club players):</h2>
+    <ul>
+      {% for team, count in violations.items() %}
+        <li><strong>{{ team }}</strong> has <strong>{{ count }}</strong> club players.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <h2 style="color:green;">No teams violating the {{ max_club_players }} club player limit!</h2>
+  {% endif %}
+  <h2>Summary of Club Players on Rosters:</h2>
+  <ul>
+    {% for team, members in team_club_members.items() %}
+      {% if members %}
+        {% if team in violations %}
+          <li><strong style="color:red;">{{ team }}</strong>: {{ members|join(", ") }}</li>
+        {% else %}
+          <li><strong>{{ team }}</strong>: {{ members|join(", ") }}</li>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </ul>
+  <br>
+  <a href="{{ url_for('index') }}">Back to Form</a>
+</body>
+</html>
