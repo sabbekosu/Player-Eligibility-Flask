@@ -7,6 +7,8 @@ import pdfplumber
 import fitz  # PyMuPDF
 import pdf2txt
 from bs4 import BeautifulSoup
+from pdfminer.high_level import extract_text_to_fp
+from io import StringIO
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"  # Replace with a secure secret key
@@ -38,24 +40,25 @@ def extract_text_pymupdf(file_obj):
 def extract_text_html(file_obj):
     try:
         file_obj.seek(0)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(file_obj.read())
-            tmp_path = tmp.name
-        output_html = tmp_path + ".html"
-        pdf2txt.main(["-o", output_html, tmp_path])
-        with open(output_html, "r", encoding="utf-8") as file:
-            soup = BeautifulSoup(file, "html.parser")
-            text = soup.get_text()
-        os.remove(output_html)
-        os.remove(tmp_path)
-        return text
+        output = StringIO()
+        # Note: We removed the codec parameter here.
+        extract_text_to_fp(file_obj, output, output_type='html')
+        html_content = output.getvalue()
+        output.close()
+        soup = BeautifulSoup(html_content, "html.parser")
+        text = soup.get_text()
+        if text.strip():
+            return text
     except Exception as e:
         flash(f"⚠️ HTML extraction failed: {e}")
-        return None
+    return None
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        print("POST received!")
+        print("request.files:", request.files)
+        print("request.form:", request.form)
         # Get the player limit selection
         player_limit = request.form.get("player_limit", "5 or fewer")
         max_club_players = 1 if "5 or fewer" in player_limit else 2

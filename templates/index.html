@@ -2,33 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Results - IM Team Club Player Checker</title>
+  <title>IM Team Club Player Checker</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    :root {
+      --osu-orange: #FF6600;
+      --osu-black: #000000;
+      --osu-white: #ffffff;
+    }
+    body {
+      background-color: var(--osu-white);
+      color: var(--osu-black);
+      padding-top: 20px;
+    }
+    .header {
+      background-color: var(--osu-black);
+      color: var(--osu-orange);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .form-container {
+      max-width: 800px;
+      margin: auto;
+    }
+  </style>
 </head>
 <body>
-  <h1>Results - IM Team Club Player Checker</h1>
-  {% if violations %}
-    <h2 style="color:red;">Teams Violating Club Player Limit (More than {{ max_club_players }} club players):</h2>
-    <ul>
-      {% for team, count in violations.items() %}
-        <li><strong>{{ team }}</strong> has <strong>{{ count }}</strong> club players.</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <h2 style="color:green;">No teams violating the {{ max_club_players }} club player limit!</h2>
-  {% endif %}
-  <h2>Summary of Club Players on Rosters:</h2>
-  <ul>
-    {% for team, members in team_club_members.items() %}
-      {% if members %}
-        {% if team in violations %}
-          <li><strong style="color:red;">{{ team }}</strong>: {{ members|join(", ") }}</li>
-        {% else %}
-          <li><strong>{{ team }}</strong>: {{ members|join(", ") }}</li>
-        {% endif %}
+  <div class="header">
+    <h1>IM Team Club Player Checker</h1>
+  </div>
+  <div class="container form-container">
+    <h2>Sport Rules Configuration</h2>
+    <form method="post" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="player_limit">How many players are in the game at one time?</label>
+        <select class="form-control" name="player_limit" id="player_limit">
+          <option value="5 or fewer">5 or fewer players (max 1 club player)</option>
+          <option value="6 or more">6 or more players (max 2 club players)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="club_csvs">Upload Club Roster CSV(s) (Optional):</label>
+        <input type="file" name="club_csvs" id="club_csvs" multiple accept=".csv" class="form-control-file">
+      </div>
+      <div class="form-group">
+        <label for="im_pdf">Upload IM Team Rosters PDF:</label>
+        <input type="file" name="im_pdf" id="im_pdf" accept=".pdf" required class="form-control-file">
+      </div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="mt-3">
+          <ul class="list-unstyled">
+            {% for message in messages %}
+              <li class="alert alert-danger">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        </div>
       {% endif %}
-    {% endfor %}
-  </ul>
-  <br>
-  <a href="{{ url_for('index') }}">Back to Form</a>
+    {% endwith %}
+  </div>
 </body>
 </html>
