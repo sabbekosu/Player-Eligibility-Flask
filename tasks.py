@@ -1,4 +1,4 @@
-from app import celery  # Import the Celery instance from the app
+# tasks.py
 import re
 import time
 from io import StringIO, BytesIO
@@ -65,9 +65,15 @@ def smart_extract_text(file_obj):
         print(f"smart_extract_text error: {e}")
         return None
 
-@celery.task(bind=True)
-def process_task(self, club_csvs_data, im_pdf_bytes, player_limit):
-    # Process club CSVs to build the set of club players
+def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks_status):
+    """
+    Process the uploaded CSV and PDF data, update the tasks_status dictionary
+    with the task progress and final results.
+    """
+    # Mark that processing has started.
+    tasks_status[task_id] = {"status": "PROCESSING", "result": None}
+    
+    # Build set of club players from CSVs.
     club_players = set()
     for csv_item in club_csvs_data:
         try:
@@ -81,17 +87,18 @@ def process_task(self, club_csvs_data, im_pdf_bytes, player_limit):
         except Exception as e:
             print(f"Error processing CSV {csv_item['filename']}: {e}")
 
-    # Extract text from the PDF using the smart extraction routine
+    # Extract text from the PDF.
     im_pdf_file = BytesIO(im_pdf_bytes)
     extraction_start_time = time.time()
     text = smart_extract_text(im_pdf_file)
     extraction_end_time = time.time()
-    print(f"[Celery] Extraction took {extraction_end_time - extraction_start_time:.2f} seconds")
+    print(f"[Thread] Extraction took {extraction_end_time - extraction_start_time:.2f} seconds")
     
     if not text:
-        return {"error": "Text extraction failed."}
+        tasks_status[task_id] = {"status": "FAILED", "result": {"error": "Text extraction failed."}}
+        return
 
-    # Process extracted text to identify teams and players.
+    # Process extracted text to parse teams and players.
     teams = {}
     elite_players = set()
     elite_teams = {}
@@ -128,13 +135,12 @@ def process_task(self, club_csvs_data, im_pdf_bytes, player_limit):
             if current_team:
                 teams[current_team].append(player_name)
 
-    # Add elite players to club players if any
+    # Merge club players with elite players.
     club_players.update(elite_players)
     violations = {}
     team_club_members = {}
-
-    # Cache to store title case conversion for efficiency.
     name_cache = {}
+
     def convert_title(name):
         if name in name_cache:
             return name_cache[name]
@@ -143,7 +149,6 @@ def process_task(self, club_csvs_data, im_pdf_bytes, player_limit):
         return title_name
 
     for team, roster in teams.items():
-        # Skip elite teams from violation check
         if team in elite_teams:
             continue
         common_names = club_players.intersection(roster)
@@ -153,8 +158,10 @@ def process_task(self, club_csvs_data, im_pdf_bytes, player_limit):
         if len(club_on_team) > max_club_players:
             violations[team] = len(club_on_team)
 
-    return {
+    result = {
         "violations": violations,
         "team_club_members": team_club_members,
         "max_club_players": 1 if "5 or fewer" in player_limit else 2
     }
+    
+    tasks_status[task_id] = {"status": "SUCCESS", "result": result}
