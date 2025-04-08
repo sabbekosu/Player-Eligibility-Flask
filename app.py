@@ -2,13 +2,11 @@
 import time
 from uuid import uuid4
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
-from tasks import process_long_task
+import threading
+import tasks  # Import the tasks module (which includes update_status and get_status)
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key_here"  # Replace with your real secret key
-
-# Global dictionary to track tasks.
-tasks_status = {}
+app.secret_key = "your_secret_key_here"  # Replace with a secure secret key
 
 @app.route("/", methods=["GET"])
 def index():
@@ -16,10 +14,10 @@ def index():
 
 @app.route("/process", methods=["POST"])
 def process():
-    # Retrieve form inputs.
+    # Get form inputs.
     player_limit = request.form.get("player_limit", "5 or fewer")
 
-    # Process uploaded club CSVs.
+    # Process uploaded CSV files.
     club_csvs_data = []
     club_csvs = request.files.getlist("club_csvs")
     for club_csv in club_csvs:
@@ -33,41 +31,37 @@ def process():
             except Exception as e:
                 flash(f"Error processing CSV {club_csv.filename}: {e}")
 
-    # Read the IM Team Rosters PDF.
+    # Read the PDF.
     im_pdf = request.files.get("im_pdf")
     if not im_pdf:
         flash("Please upload a PDF for IM Team Rosters.")
         return redirect(url_for("index"))
     im_pdf_bytes = im_pdf.read()
 
-    # Generate a unique task ID and set initial status.
+    # Generate a unique task ID.
     task_id = str(uuid4())
-    tasks_status[task_id] = {"status": "PENDING", "result": None}
-    
-    # Start the background thread to process the task.
-    import threading
+    tasks.update_status(task_id, "PENDING")
+
+    # Start the long processing in a background thread.
     thread = threading.Thread(
-        target=process_long_task, 
-        args=(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks_status)
+        target=tasks.process_long_task, 
+        args=(club_csvs_data, im_pdf_bytes, player_limit, task_id)
     )
     thread.start()
-    
+
     # Render a loading page that polls for task status.
     return render_template("loading.html", task_id=task_id)
 
 @app.route("/status/<task_id>")
 def task_status(task_id):
-    status = tasks_status.get(task_id)
-    if not status:
-        return jsonify({"state": "NOT_FOUND"})
-    return jsonify({"state": status["status"], "result": status["result"]})
+    status = tasks.get_status(task_id)
+    return jsonify({"state": status.get("status"), "result": status.get("result")})
 
 @app.route("/result/<task_id>")
 def result(task_id):
-    status = tasks_status.get(task_id)
-    if status and status["status"] == "SUCCESS":
-        result = status["result"]
-        return render_template("results.html", **result)
+    status = tasks.get_status(task_id)
+    if status.get("status") == "SUCCESS":
+        return render_template("results.html", **status.get("result"))
     else:
         flash("The results are not ready yet, please wait.")
         return redirect(url_for("index"))

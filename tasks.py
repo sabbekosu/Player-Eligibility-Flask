@@ -1,6 +1,5 @@
 # tasks.py
-import re
-import time
+import os, redis, json, re, time
 from io import StringIO, BytesIO
 import pandas as pd
 import pdfplumber
@@ -8,6 +7,22 @@ import fitz  # PyMuPDF
 import pdf2txt
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text_to_fp
+
+# Create a Redis client using the environment variable (REDIS_URL)
+redis_client = redis.Redis.from_url(os.environ.get("REDIS_URL"))
+
+def update_status(task_id, status, result=None):
+    """Save the task status and result in Redis."""
+    data = {"status": status, "result": result}
+    redis_client.set(task_id, json.dumps(data))
+
+def get_status(task_id):
+    """Retrieve the task status and result from Redis."""
+    data = redis_client.get(task_id)
+    if data:
+        return json.loads(data)
+    else:
+        return {"status": "NOT_FOUND", "result": None}
 
 def extract_text_pdfplumber(file_obj):
     try:
@@ -65,13 +80,9 @@ def smart_extract_text(file_obj):
         print(f"smart_extract_text error: {e}")
         return None
 
-def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks_status):
-    """
-    Process the uploaded CSV and PDF data, update the tasks_status dictionary
-    with the task progress and final results.
-    """
-    # Mark that processing has started.
-    tasks_status[task_id] = {"status": "PROCESSING", "result": None}
+def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id):
+    # Mark task as processing.
+    update_status(task_id, "PROCESSING")
     
     # Build set of club players from CSVs.
     club_players = set()
@@ -95,10 +106,10 @@ def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks
     print(f"[Thread] Extraction took {extraction_end_time - extraction_start_time:.2f} seconds")
     
     if not text:
-        tasks_status[task_id] = {"status": "FAILED", "result": {"error": "Text extraction failed."}}
+        update_status(task_id, "FAILED", {"error": "Text extraction failed."})
         return
 
-    # Process extracted text to parse teams and players.
+    # Process extracted text to identify teams and players.
     teams = {}
     elite_players = set()
     elite_teams = {}
@@ -135,12 +146,11 @@ def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks
             if current_team:
                 teams[current_team].append(player_name)
 
-    # Merge club players with elite players.
     club_players.update(elite_players)
     violations = {}
     team_club_members = {}
     name_cache = {}
-
+    
     def convert_title(name):
         if name in name_cache:
             return name_cache[name]
@@ -157,11 +167,11 @@ def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id, tasks
         max_club_players = 1 if "5 or fewer" in player_limit else 2
         if len(club_on_team) > max_club_players:
             violations[team] = len(club_on_team)
-
+            
     result = {
         "violations": violations,
         "team_club_members": team_club_members,
         "max_club_players": 1 if "5 or fewer" in player_limit else 2
     }
     
-    tasks_status[task_id] = {"status": "SUCCESS", "result": result}
+    update_status(task_id, "SUCCESS", result)
