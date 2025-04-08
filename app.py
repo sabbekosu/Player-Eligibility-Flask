@@ -9,6 +9,7 @@ import pdf2txt
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text_to_fp
 from io import StringIO
+import time  # added for timing
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key_here"  # Replace with a secure secret key
@@ -56,9 +57,13 @@ def extract_text_html(file_obj):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        # Start timing for file reading and extraction
+        overall_start_time = time.time()
+        
         print("POST received!")
         print("request.files:", request.files)
         print("request.form:", request.form)
+        
         # Get the player limit selection
         player_limit = request.form.get("player_limit", "5 or fewer")
         max_club_players = 1 if "5 or fewer" in player_limit else 2
@@ -100,7 +105,11 @@ def index():
         if not text:
             flash("❌ Text extraction failed for all methods.")
             return redirect(request.url)
-
+        
+        # Debug: File reading and extraction timing
+        file_read_time = time.time()
+        print(f"DEBUG: File reading and extraction took {file_read_time - overall_start_time:.2f} seconds")
+        
         # Process the extracted text to parse teams and players
         teams = {}
         elite_players = set()
@@ -145,14 +154,32 @@ def index():
         violations = {}
         team_club_members = {}
 
+        # Start timing for name searching
+        search_start_time = time.time()
+
+        # Cache for title conversion to avoid repetitive processing
+        name_cache = {}
+        def convert_title(name):
+            if name in name_cache:
+                return name_cache[name]
+            else:
+                title_name = name.title()
+                name_cache[name] = title_name
+                return title_name
+
         for team, roster in teams.items():
             # Skip elite teams from violation check
             if team in elite_teams:
-                continue  
-            club_on_team = [player.title() for player in roster if player in club_players]
+                continue
+            # Use set intersection for faster membership checking
+            common_names = club_players.intersection(roster)
+            club_on_team = [convert_title(player) for player in roster if player in common_names]
             team_club_members[team] = club_on_team
             if len(club_on_team) > max_club_players:
                 violations[team] = len(club_on_team)
+
+        search_end_time = time.time()
+        print(f"DEBUG: Searching names took {search_end_time - search_start_time:.2f} seconds")
 
         return render_template("results.html",
                                max_club_players=max_club_players,
