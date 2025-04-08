@@ -35,7 +35,7 @@
   </div>
   <div class="container form-container">
     <h2>Sport Rules Configuration</h2>
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" action="{{ url_for('process') }}" enctype="multipart/form-data">
       <div class="form-group">
         <label for="player_limit">How many players are in the game at one time?</label>
         <select class="form-control" name="player_limit" id="player_limit">
