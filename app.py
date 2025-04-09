@@ -1,4 +1,7 @@
 # app.py
+from gevent import monkey
+monkey.patch_all()
+
 import time, json
 from uuid import uuid4
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Response
