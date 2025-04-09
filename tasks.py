@@ -11,6 +11,8 @@ import fitz  # PyMuPDF
 import pdf2txt
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text_to_fp
+import logging
+logging.getLogger("pdfminer.pdfpage").setLevel(logging.ERROR)
 
 # Read Upstash credentials from environment variables.
 UPSTASH_HOST = os.environ.get("UPSTASH_HOST")

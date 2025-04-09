@@ -3,37 +3,29 @@
 <head>
   <meta charset="utf-8">
   <title>Processing...</title>
-  <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <script>
-    function checkStatus(taskId) {
-      fetch("/status/" + taskId)
-        .then(response => response.json())
-        .then(data => {
-          if(data.state === "SUCCESS") {
-            // Redirect to the results page when complete
-            window.location.href = "/result/" + taskId;
-          } else if (data.state === "FAILURE") {
-            document.getElementById('status').innerText = "An error occurred.";
-          } else {
-            document.getElementById('status').innerText = "Processing: " + data.state;
-            setTimeout(function(){ checkStatus(taskId) }, 2000);
-          }
-        });
-    }
-    window.onload = function() {
+    document.addEventListener("DOMContentLoaded", function() {
       var taskId = "{{ task_id }}";
-      checkStatus(taskId);
-    }
+      var source = new EventSource("/stream/" + taskId);
+      source.onmessage = function(event) {
+        var data = JSON.parse(event.data);
+        console.log("Received update:", data);
+        if (data.status === "SUCCESS" || data.status === "FAILED") {
+          // Close the event stream and redirect when finished.
+          source.close();
+          window.location.href = "/result/" + taskId;
+        }
+      };
+      source.onerror = function(err) {
+        console.error("EventSource failed:", err);
+      };
+    });
   </script>
 </head>
 <body>
-  <div class="container text-center">
+  <div class="container">
     <h2>Your file is being processed...</h2>
-    <p id="status">Starting...</p>
-    <div class="spinner-border" role="status">
-      <span class="sr-only">Loading...</span>
-    </div>
+    <p id="status">Processing...</p>
   </div>
 </body>
 </html>
