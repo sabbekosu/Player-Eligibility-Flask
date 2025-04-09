@@ -63,7 +63,7 @@ def stream(task_id):
             if status in ["SUCCESS", "FAILED"]:
                 # Once processing is done, break from the loop.
                 break
-            time.sleep(5)
+            time.sleep(2)
     return Response(event_stream(), mimetype="text/event-stream")
 
 @app.route("/result/<task_id>")
