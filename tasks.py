@@ -1,5 +1,9 @@
 # tasks.py
-import os, redis, json, re, time
+import os
+import redis
+import json
+import re
+import time
 from io import StringIO, BytesIO
 import pandas as pd
 import pdfplumber
@@ -8,16 +12,33 @@ import pdf2txt
 from bs4 import BeautifulSoup
 from pdfminer.high_level import extract_text_to_fp
 
-# Create a Redis client using the environment variable (REDIS_URL)
-redis_client = redis.Redis.from_url(os.environ.get("REDIS_URL"))
+# Read Upstash credentials from environment variables.
+UPSTASH_HOST = os.environ.get("UPSTASH_HOST")
+UPSTASH_PORT = int(os.environ.get("UPSTASH_PORT", 6379))
+UPSTASH_PASSWORD = os.environ.get("UPSTASH_PASSWORD")
+
+if not UPSTASH_HOST or not UPSTASH_PASSWORD:
+    raise Exception("UPSTASH_HOST and UPSTASH_PASSWORD environment variables are required")
+
+# Initialize the Redis client with explicit parameters and SSL enabled.
+redis_client = redis.Redis(
+    host=UPSTASH_HOST,
+    port=UPSTASH_PORT,
+    password=UPSTASH_PASSWORD,
+    ssl=True
+)
 
 def update_status(task_id, status, result=None):
-    """Save the task status and result in Redis."""
+    """
+    Save the task status and result in Redis.
+    """
     data = {"status": status, "result": result}
-    redis_client.set(task_id, json.dumps(data))
+    redis_client.set(task_id, json.dumps(data), ex=86400)
 
 def get_status(task_id):
-    """Retrieve the task status and result from Redis."""
+    """
+    Retrieve the task status and result from Redis.
+    """
     data = redis_client.get(task_id)
     if data:
         return json.loads(data)
@@ -52,6 +73,7 @@ def extract_text_html(file_obj):
     try:
         file_obj.seek(0)
         output = StringIO()
+        # Use pdfminer to produce HTML output and then extract text.
         extract_text_to_fp(file_obj, output, output_type='html')
         html_content = output.getvalue()
         output.close()
@@ -64,6 +86,9 @@ def extract_text_html(file_obj):
     return None
 
 def smart_extract_text(file_obj):
+    """
+    Attempts extraction with pdfplumber first, then PyMuPDF, and lastly HTML extraction.
+    """
     try:
         file_obj.seek(0)
         file_bytes = file_obj.read()
@@ -81,10 +106,13 @@ def smart_extract_text(file_obj):
         return None
 
 def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id):
+    """
+    Process the provided CSV and PDF data, then update the task status in Redis.
+    """
     # Mark task as processing.
     update_status(task_id, "PROCESSING")
     
-    # Build set of club players from CSVs.
+    # Build a set of club players from the CSV files.
     club_players = set()
     for csv_item in club_csvs_data:
         try:
@@ -109,7 +137,7 @@ def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id):
         update_status(task_id, "FAILED", {"error": "Text extraction failed."})
         return
 
-    # Process extracted text to identify teams and players.
+    # Process the extracted text: parse teams and players.
     teams = {}
     elite_players = set()
     elite_teams = {}
@@ -150,7 +178,7 @@ def process_long_task(club_csvs_data, im_pdf_bytes, player_limit, task_id):
     violations = {}
     team_club_members = {}
     name_cache = {}
-    
+
     def convert_title(name):
         if name in name_cache:
             return name_cache[name]
