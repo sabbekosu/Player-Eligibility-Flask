@@ -6,6 +6,3 @@ pdf2txt
 pdfminer.six
 beautifulsoup4
 gunicorn
-celery
-redis
-gevent

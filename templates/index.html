@@ -3,39 +3,23 @@
 <head>
   <meta charset="utf-8">
   <title>IM Team Club Player Checker</title>
-  <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
   <style>
-    :root {
-      --osu-orange: #FF6600;
-      --osu-black: #000000;
-      --osu-white: #ffffff;
-    }
-    body {
-      background-color: var(--osu-white);
-      color: var(--osu-black);
-      padding-top: 20px;
-    }
-    .header {
-      background-color: var(--osu-black);
-      color: var(--osu-orange);
-      padding: 20px;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .form-container {
-      max-width: 800px;
-      margin: auto;
-    }
+    :root{--osu-orange:#FF6600;--osu-black:#000;--osu-white:#fff}
+    body{background:var(--osu-white);color:var(--osu-black);padding-top:20px}
+    .header{background:var(--osu-black);color:var(--osu-orange);padding:20px;text-align:center;margin-bottom:30px}
+    .form-container{max-width:800px;margin:auto}
+    .file-chip{display:inline-flex;align-items:center;background:#e2e6ea;border-radius:20px;padding:0.25rem 0.75rem;margin:0 0.5rem 0.5rem 0;font-size:0.875rem}
+    .file-chip select{border:none;background:transparent;font-size:0.8rem;margin-left:0.5rem;min-width:8rem}
+    .file-chip select:focus{outline:none;background:#fff}
+    .file-chip .remove{cursor:pointer;margin-left:0.5rem;font-weight:700}
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>IM Team Club Player Checker</h1>
-  </div>
+  <div class="header"><h1>IM Team Club Player Checker</h1></div>
   <div class="container form-container">
     <h2>Sport Rules Configuration</h2>
-    <form method="post" action="{{ url_for('process') }}" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="main-form">
       <div class="form-group">
         <label for="player_limit">How many players are in the game at one time?</label>
         <select class="form-control" name="player_limit" id="player_limit">
@@ -43,27 +27,100 @@
           <option value="6 or more">6 or more players (max 2 club players)</option>
         </select>
       </div>
+
+      <!-- saved roster picker (dbl‑click adds chip) -->
       <div class="form-group">
-        <label for="club_csvs">Upload Club Roster CSV(s) (Optional):</label>
-        <input type="file" name="club_csvs" id="club_csvs" multiple accept=".csv" class="form-control-file">
+        <label for="existing_rosters">Saved club rosters:</label>
+        <select multiple size="6" class="form-control" id="existing_rosters">
+          {% for rid, roster in sorted_rosters %}
+            <option value="{{ rid }}">{{ roster.club_name }} ({{ roster.uploaded_at.split('T')[0] }})</option>
+          {% endfor %}
+        </select>
+        <small class="form-text text-muted">Double‑click a roster to use it in this check.</small>
       </div>
+
+      <!-- CSV uploads -->
       <div class="form-group">
-        <label for="im_pdf">Upload IM Team Rosters PDF:</label>
-        <input type="file" name="im_pdf" id="im_pdf" accept=".pdf" required class="form-control-file">
+        <label>Add new club roster CSV(s):</label><br>
+        <button type="button" id="add-csv-btn" class="btn btn-outline-primary btn-sm mb-2">Add CSV File</button>
+        <input type="file" name="club_csvs" id="club_csvs" multiple accept=".csv" class="d-none">
+        <div id="csv-list"></div>
       </div>
+
+      <!-- PDF upload (single) -->
+      <div class="form-group">
+        <label>Upload IM Team Rosters PDF:</label><br>
+        <button type="button" id="add-pdf-btn" class="btn btn-outline-primary btn-sm mb-2">Add PDF File</button>
+        <input type="file" name="im_pdf" id="im_pdf" accept=".pdf" required class="d-none">
+        <div id="pdf-list"></div>
+      </div>
+
       <button type="submit" class="btn btn-primary">Submit</button>
     </form>
+
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <div class="mt-3">
-          <ul class="list-unstyled">
-            {% for message in messages %}
-              <li class="alert alert-danger">{{ message }}</li>
-            {% endfor %}
-          </ul>
-        </div>
+        <div class="mt-3"><ul class="list-unstyled">{% for m in messages %}<li class="alert alert-danger">{{ m }}</li>{% endfor %}</ul></div>
       {% endif %}
     {% endwith %}
   </div>
+
+<script>
+  const CLUBS = ["Archery Club", "Badminton Club", "Baseball Club", "Cycling Club", "Disc Golf Club", "Dodgeball Club", "Equestrain Dressage Club",
+  "Equestrian Event", "Equestrian Hunter-Jumper", "Equestrian Polo Club", "Fishing Club", "Gymnastics Club", "Indoor Rock Climbing",
+  "Intercollegiate Horse Show Assosiation", "Judo Club", "Karate Club", "Kendo Club", "Marksmanship Club", "Men's Lacrosse Club",
+  "Men's Rugby Club", "Men's Soccer Club", "Men's Ultimate Disc Club", "Men's Volleyball Club", "Men's Water Polo Club",
+  "Pistol Club", "Racquetball Club", "Rifle Club", "Running Club", "Sailing Club", "Stock Horse Club", "Swim Club", "Table Tennis Club",
+  "Tennis Club", "Triathlon Club", "Women's Lacrosse Club", "Women's Rugby Club", "Women's Soccer Club", "Women's Ultimate Disc Club",
+  "Women's Volleyball Club", "Women's Water Polo Club","Other"];
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    const csvInput=document.getElementById('club_csvs');
+    const addCsvBtn=document.getElementById('add-csv-btn');
+    const csvList=document.getElementById('csv-list');
+    const existingSelect=document.getElementById('existing_rosters');
+
+    const dtCsv=new DataTransfer();
+
+    addCsvBtn.addEventListener('click',()=>csvInput.click());
+    csvInput.addEventListener('change',()=>{
+      [...csvInput.files].forEach(f=>{if([...dtCsv.files].some(x=>x.name===f.name&&x.size===f.size))return;dtCsv.items.add(f);renderCsvChip(f)});
+      csvInput.value='';csvInput.files=dtCsv.files;
+    });
+
+    existingSelect.addEventListener('dblclick',e=>{
+      const option=e.target;if(!option.selected)return;
+      const chip=document.createElement('span');chip.className='file-chip';chip.textContent=option.textContent;
+      chip.dataset.savedRosterId=option.value;
+      // hidden input so backend knows which saved roster IDs were picked
+      const hidden=document.createElement('input');hidden.type='hidden';hidden.name='existing_rosters';hidden.value=option.value;chip.appendChild(hidden);
+      const remove=document.createElement('span');remove.className='remove';remove.innerHTML='&times;';remove.onclick=()=>chip.remove();
+      chip.appendChild(remove);
+      csvList.appendChild(chip);
+    });
+
+    function renderCsvChip(file){
+      const chip=document.createElement('span');chip.className='file-chip';chip.textContent=file.name.replace(/\.csv$/i,'');
+      // dropdown
+      const sel=document.createElement('select');sel.name='club_names[]';
+      CLUBS.forEach(c=>{
+        const opt=document.createElement('option');opt.value=c;opt.textContent=c;sel.appendChild(opt);
+      });
+      // text input for Other
+      const otherInput=document.createElement('input');otherInput.type='text';otherInput.placeholder='New club name';otherInput.className='ml-1 form-control form-control-sm';otherInput.style.display='none';
+      sel.addEventListener('change',()=>{otherInput.style.display=sel.value==='Other'?'inline-block':'none';if(sel.value!=='Other')otherInput.value='';});
+      chip.appendChild(sel);chip.appendChild(otherInput);
+      // remove btn
+      const remove=document.createElement('span');remove.className='remove';remove.innerHTML='&times;';remove.onclick=()=>{[...dtCsv.items].forEach((it,i)=>{if(it.getAsFile().name===file.name&&it.getAsFile().size===file.size)dtCsv.items.remove(i)});csvInput.files=dtCsv.files;chip.remove();};
+      chip.appendChild(remove);
+      csvList.appendChild(chip);
+    }
+
+    // PDF handling
+    let pdfDT=new DataTransfer();const pdfInput=document.getElementById('im_pdf');const addPdfBtn=document.getElementById('add-pdf-btn');const pdfList=document.getElementById('pdf-list');
+    addPdfBtn.onclick=()=>pdfInput.click();
+    pdfInput.onchange=()=>{if(!pdfInput.files.length)return;const f=pdfInput.files[0];pdfDT=new DataTransfer();pdfDT.items.add(f);pdfInput.files=pdfDT.files;pdfList.innerHTML='';const chip=document.createElement('span');chip.className='file-chip';chip.textContent=f.name;const x=document.createElement('span');x.className='remove';x.innerHTML='&times;';x.onclick=()=>{pdfDT=new DataTransfer();pdfInput.files=pdfDT.files;pdfList.innerHTML='';};chip.appendChild(x);pdfList.appendChild(chip);};
+  });
+</script>
 </body>
 </html>
