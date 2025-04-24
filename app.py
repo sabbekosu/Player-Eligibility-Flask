@@ -14,6 +14,9 @@ import pdfplumber
 from bs4 import BeautifulSoup
 from flask import Flask, flash, redirect, render_template, request, url_for
 from pdfminer.high_level import extract_text_to_fp
+from league_checklist import bp as leagues_bp
+from admin import admin as admin_bp
+
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Paths & Flask setup
@@ -24,7 +27,9 @@ ROSTER_META = ROSTER_DIR / "rosters.json"
 ROSTER_DIR.mkdir(exist_ok=True)
 
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
-app.secret_key = "replace‑me"  # set securely in production
+app.register_blueprint(leagues_bp)
+app.register_blueprint(admin_bp)
+app.secret_key = "replace-me"  # set securely in production
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Helpers for roster persistence
@@ -150,8 +155,13 @@ def build_club_player_set(csv_source) -> Set[str]:
 # Main route
 # ────────────────────────────────────────────────────────────────────────────────
 
-@app.route("/", methods=["GET", "POST"])
-def index():
+@app.route("/")
+def home():
+    """Main hub: choose Eligibility Checker or League Checklists."""
+    return render_template("home.html")
+
+@app.route("/eligibility", methods=["GET", "POST"])
+def eligibility():
     saved_rosters = _load_meta()
     sorted_rosters = sorted(saved_rosters.items(), key=lambda item: item[1]["club_name"].lower())
 

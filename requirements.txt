@@ -6,3 +6,6 @@ pdf2txt
 pdfminer.six
 beautifulsoup4
 gunicorn
+sqlalchemy
+pyinstaller
+flask-wtf

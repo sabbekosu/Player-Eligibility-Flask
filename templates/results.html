@@ -1,71 +1,40 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Results - IM Team Club Player Checker</title>
-  <!-- Bootstrap CSS -->
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
-    :root {
-      --osu-orange: #FF6600;
-      --osu-black: #000000;
-      --osu-white: #ffffff;
-    }
-    body {
-      background-color: var(--osu-white);
-      color: var(--osu-black);
-      padding-top: 20px;
-    }
-    .header {
-      background-color: var(--osu-black);
-      color: var(--osu-orange);
-      padding: 20px;
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .content-container {
-      max-width: 800px;
-      margin: auto;
-    }
-    .back-btn {
-      margin-top: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Results - IM Team Club Player Checker</h1>
-  </div>
-  <div class="container content-container">
-    {% if violations %}
-      <h2 class="text-danger">Teams Violating Club Player Limit (More than {{ max_club_players }} club players):</h2>
-      <ul class="list-group">
-        {% for team, count in violations.items() %}
-          <li class="list-group-item">
-            <strong>{{ team }}</strong> has <strong>{{ count }}</strong> club players.
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <h2 class="text-success">No teams violating the {{ max_club_players }} club player limit!</h2>
-    {% endif %}
-    <h2 class="mt-4">Summary of Club Players on Rosters:</h2>
+{% extends "base.html" %}
+{% block title %}Results – IM Team Club Player Checker{% endblock %}
+
+{% block head %}
+<style>
+  :root{--osu-orange:#FF6600;--osu-black:#000;--osu-white:#fff}
+  .header{background:var(--osu-black);color:var(--osu-orange);padding:20px;text-align:center;margin-bottom:30px}
+  .content-container{max-width:800px;margin:auto}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header"><h1>Results – IM Team Club Player Checker</h1></div>
+
+<div class="container content-container">
+  {% if violations %}
+    <h2 class="text-danger">
+      Teams Violating Club Player Limit (More than {{ max_club_players }} club players):
+    </h2>
     <ul class="list-group">
-      {% for team, members in team_club_members.items() %}
-        {% if members %}
-          {% if team in violations %}
-            <li class="list-group-item">
-              <strong class="text-danger">{{ team }}</strong>: {{ members|join(", ") }}
-            </li>
-          {% else %}
-            <li class="list-group-item">
-              <strong>{{ team }}</strong>: {{ members|join(", ") }}
-            </li>
-          {% endif %}
-        {% endif %}
+      {% for team, count in violations.items() %}
+        <li class="list-group-item"><strong>{{ team }}</strong> has <strong>{{ count }}</strong> club players.</li>
       {% endfor %}
     </ul>
-    <a href="{{ url_for('index') }}" class="btn btn-secondary back-btn">Back to Form</a>
-  </div>
-</body>
-</html>
+  {% else %}
+    <h2 class="text-success">No teams violating the {{ max_club_players }} club player limit!</h2>
+  {% endif %}
+
+  <h2 class="mt-4">Summary of Club Players on Rosters:</h2>
+  <ul class="list-group">
+    {% for team, members in team_club_members.items() if members %}
+      <li class="list-group-item{% if team in violations %} text-danger{% endif %}">
+        <strong>{{ team }}</strong>: {{ members|join(", ") }}
+      </li>
+    {% endfor %}
+  </ul>
+
+  <a href="{{ url_for('eligibility') }}" class="btn btn-secondary mt-3">Back to Form</a>
+</div>
+{% endblock %}

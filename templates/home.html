@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Home – IM Tools{% endblock %}
+{% block content %}
+<h1 class="mb-4">Welcome to IM Tools</h1>
+<p class="lead">Choose a feature:</p>
+<ul class="list-group">
+  <li class="list-group-item"><a href="{{ url_for('eligibility') }}">Player Eligibility Checker</a></li>
+  <li class="list-group-item"><a href="{{ url_for('leagues.league_list') }}">League Checklists</a></li>
+</ul>
+{% endblock %}
