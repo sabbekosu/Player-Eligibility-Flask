@@ -1,17 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Your Leagues{% endblock %}
-
+{% block title %}Leagues - Admin{% endblock %}
 {% block content %}
-<h1>Your Intramural Leagues</h1>
-
-<div class="list-group">
-  {% for league in leagues %}
-    {% set done = progress.get(league.id, [])|length %}
-    <a href="{{ url_for('leagues.league_checklist', league_id=league.id) }}"
-       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-      {{ league.name }}
-      <span class="badge badge-primary badge-pill">{{ done }}/{{ league.tasks|length }}</span>
-    </a>
+<h1>Leagues</h1>
+<a href="{{ url_for('admin.league_new') }}" class="btn btn-sm btn-primary mb-2">New League</a>
+<table class="table">
+  <tr><th>ID</th><th>Name</th><th>Tasks</th><th></th></tr>
+  {% for l in leagues %}
+    <tr>
+      <td>{{ l.id }}</td><td>{{ l.name }}</td>
+      <td><a href="{{ url_for('admin.tasks', lid=l.id) }}">{{ l.tasks|length }} tasks</a></td>
+      <td>
+        <a href="{{ url_for('admin.league_edit', lid=l.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+        <form action="{{ url_for('admin.league_delete', lid=l.id) }}" method="post" class="d-inline">
+          <button class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Delete</button>
+        </form>
+      </td>
+    </tr>
   {% endfor %}
-</div>
+</table>
 {% endblock %}

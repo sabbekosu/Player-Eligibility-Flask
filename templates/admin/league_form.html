@@ -6,12 +6,41 @@
 
 <form method="post">
   {{ form.hidden_tag() }}
+
+  <!-- ID ----------------------------------------------------------------- -->
   <div class="form-group">
-    {{ form.id.label }} {{ form.id(class="form-control", readonly=mode=="edit") }}
+    {{ form.id.label }}
+    {{ form.id(class="form-control", readonly=mode=="edit") }}
+    {% if form.id.errors %}<small class="text-danger">{{ form.id.errors[0] }}</small>{% endif %}
+  </div>
+
+  <!-- Name --------------------------------------------------------------- -->
+  <div class="form-group">
+    {{ form.name.label }}
+    {{ form.name(class="form-control") }}
+    {% if form.name.errors %}<small class="text-danger">{{ form.name.errors[0] }}</small>{% endif %}
+  </div>
+
+  <!-- Kind (League / Tournament) ---------------------------------------- -->
+  <div class="form-group">
+    {{ form.kind.label }}
+    {{ form.kind(class="form-control") }}
+  </div>
+
+  <!-- Officiated --------------------------------------------------------- -->
+  <div class="form-group">
+    {{ form.officiated.label }}
+    {{ form.officiated(class="form-control") }}
+  </div>
+  <!-- Start/End Dates ---------------------------------------------------- -->
+  <div class="form-group">
+    {{ form.season_start.label }} {{ form.season_start(class="form-control") }}
   </div>
   <div class="form-group">
-    {{ form.name.label }} {{ form.name(class="form-control") }}
+    {{ form.season_end.label }} {{ form.season_end(class="form-control") }}
   </div>
+  
+
   <button class="btn btn-primary">Save</button>
   <a href="{{ url_for('admin.leagues') }}" class="btn btn-secondary">Cancel</a>
 </form>

@@ -1,9 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Tasks – {{ league.name }}{% endblock %}
+{% block title %}Tasks - {{ league.name }}{% endblock %}
 
 {% block content %}
-<h1>Tasks – {{ league.name }}</h1>
+<h1>Tasks - {{ league.name }}</h1>
 <a href="{{ url_for('admin.task_new', lid=league.id) }}" class="btn btn-sm btn-primary mb-2">New Task</a>
+<form action="{{ url_for('admin.import_demo_tasks', lid=league.id) }}" method="post" class="d-inline">
+  <button class="btn btn-sm btn-outline-secondary mb-2" onclick="return confirm('Import demo tasks?')">
+    Import Demo Tasks
+  </button>
+</form>
 <table class="table table-sm">
   <tr><th>Order</th><th>ID</th><th>Title</th><th>Category</th><th>Due</th><th></th></tr>
   {% for t in league.tasks %}

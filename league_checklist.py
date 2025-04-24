@@ -21,6 +21,7 @@ from typing import Dict, List
 from db import SessionLocal, Progress
 from datetime import datetime
 from models import League as DBLeague, Task as DBTask
+from sqlalchemy.orm import selectinload
 
 
 from flask import (
@@ -104,58 +105,72 @@ LEAGUES: Dict[str, League] = {
 # ────────────────────────────────────────────────────────────────────────────────
 
 def get_progress_set(league_id: str) -> set[str]:
-    """Return a {task_id, …} set for this league (anonymous user)."""
     with SessionLocal() as db:
-        rows = db.query(Progress.task_id).filter_by(league_id=league_id).all()
+        rows = (
+            db.query(Progress.task_id)
+              .filter_by(league_id=league_id)
+              .all()
+        )
         return {r[0] for r in rows}
 
 def toggle_progress(league_id: str, task_id: str):
-    """Insert or delete a progress row."""
     with SessionLocal() as db:
         row = db.get(Progress, {"league_id": league_id, "task_id": task_id})
         if row:
             db.delete(row)
         else:
-            db.add(Progress(league_id=league_id, task_id=task_id,
+            db.add(Progress(league_id=league_id,
+                            task_id=task_id,
                             done_at=datetime.utcnow()))
         db.commit()
 
-def get_league(league_id: str):
+def get_league(league_id: str) -> DBLeague | None:
+    """Return League with tasks eagerly loaded (safe outside session)."""
     with SessionLocal() as db:
-        return db.get(DBLeague, league_id)
+        return (
+            db.query(DBLeague)
+              .options(selectinload(DBLeague.tasks))
+              .get(league_id)
+        )
 
 
 # ────────────────────────────────────────────────────────────────────────────────
 # Routes
 # ────────────────────────────────────────────────────────────────────────────────
 
-@bp.route('/leagues')
+@bp.route("/leagues")
 def league_list():
     with SessionLocal() as db:
-        leagues = db.query(DBLeague).order_by(DBLeague.name).all()
+        leagues = (
+            db.query(DBLeague)
+              .options(selectinload(DBLeague.tasks))   # eager-load tasks
+              .order_by(DBLeague.name)
+              .all()
+        )
     progress_map = {l.id: get_progress_set(l.id) for l in leagues}
     return render_template("leagues.html",
                            leagues=leagues,
                            progress=progress_map)
 
-
-
-
-@bp.route('/leagues/<league_id>')
+@bp.route("/leagues/<league_id>")
 def league_checklist(league_id):
     league = get_league(league_id) or abort(404)
     progress = get_progress_set(league_id)
-    return render_template('checklist.html', league=league, progress=progress)
+    return render_template("checklist.html",
+                           league=league,
+                           progress=progress)
 
-@bp.route('/leagues/<league_id>/task/<task_id>', methods=['GET', 'POST'])
+@bp.route("/leagues/<league_id>/task/<task_id>", methods=["GET", "POST"])
 def league_task(league_id, task_id):
     league = get_league(league_id) or abort(404)
+    task   = next((t for t in league.tasks if t.id == task_id), None) or abort(404)
 
-    task = next((t for t in league.tasks if t.id == task_id), None) or abort(404)
-                                                                                
-    if request.method == 'POST':
+    if request.method == "POST":
         toggle_progress(league_id, task_id)
-        return redirect(url_for('leagues.league_checklist', league_id=league_id))
+        return redirect(url_for("leagues.league_checklist", league_id=league_id))
 
     completed = task_id in get_progress_set(league_id)
-    return render_template('task.html', league=league, task=task, completed=completed)
+    return render_template("task.html",
+                           league=league,
+                           task=task,
+                           completed=completed)
