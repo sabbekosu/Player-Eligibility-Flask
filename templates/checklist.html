@@ -16,24 +16,30 @@
   {% if items %}
     <h3 class="mt-4">{{ cat }}</h3>
     <ul class="list-group">
-      {% for task in items %}
-        {% set done = task.id in progress %}
-        <li class="list-group-item d-flex justify-content-between align-items-start">
-          <div>
-            {% if done %}<del>{% endif %}
-            <a href="{{ url_for('leagues.league_task',
-                                 league_id=league.id,
-                                 task_id=task.id) }}">
-              {{ task.title }}
-            </a>
-            {% if done %}</del>{% endif %}
-            {% if task.due %}
-              <small class="d-block text-muted">Due: {{ task.due }}</small>
-            {% endif %}
-          </div>
-          {% if done %}<span class="badge badge-success">✓</span>{% endif %}
-        </li>
-      {% endfor %}
+    {% set dated   = items | selectattr('due')        | sort(attribute='due') | list %}
+    {% set undated = items | rejectattr('due') | list %}
+
+    {% for task in dated + undated %}
+      {% set done = task.id in progress %}
+      <li class="list-group-item d-flex justify-content-between align-items-start">
+        <div>
+          {% if done %}<del>{% endif %}
+          <a href="{{ url_for('leagues.league_task',
+                              league_id=league.id,
+                              task_id=task.id) }}">
+            {{ task.title }}
+          </a>
+          {% if done %}</del>{% endif %}
+          {% if task.due %}
+            <small class="d-block text-muted">
+              Due: {{ task.due.strftime("%b %d, %Y") }}
+            </small>
+          {% endif %}
+        </div>
+        {% if done %}<span class="badge badge-success">✓</span>{% endif %}
+      </li>
+    {% endfor %}
+
     </ul>
   {% endif %}
 {% endfor %}
