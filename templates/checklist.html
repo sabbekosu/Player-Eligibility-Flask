@@ -1,47 +1,106 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}{{ league.name }} Checklist{% endblock %}
 
 {% block head %}
+{{ super() }} {# Include base head content #}
 <style>
-  .badge-done{background:#28a745}
+  /* Optional: Custom styles if needed */
+  .task-del { /* Style for strikethrough text */
+    text-decoration: line-through;
+    color: #6b7280; /* gray-500 */
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>{{ league.name }} Checklist</h1>
+<div class="mb-6">
+  <h1 class="text-2xl font-semibold text-gray-900">{{ league.name }} Checklist</h1>
+  {# Optional: Add league dates or other info here #}
+  <p class="mt-1 text-sm text-gray-500">
+    Track your progress through the required tasks. Click a task for more details.
+  </p>
+</div>
 
-{% set ordered = ["Pre-League", "Pre-Event", "Post-League", "Post-Event"] %}
-{% for cat in ordered %}
-  {% set items = league.tasks | selectattr('category', 'equalto', cat) | list %}
-  {% if items %}
-    <h3 class="mt-4">{{ cat }}</h3>
-    <ul class="list-group">
-    {% set dated   = items | selectattr('due')        | sort(attribute='due') | list %}
-    {% set undated = items | rejectattr('due') | list %}
+{# Note: today_date is passed from the Flask route #}
+{# Note: ordered_categories is passed from the Flask route #}
+{# Note: grouped_tasks is passed from the Flask route (dictionary where keys are categories and values are sorted lists of tasks) #}
 
-    {% for task in dated + undated %}
-      {% set done = task.id in progress %}
-      <li class="list-group-item d-flex justify-content-between align-items-start">
-        <div>
-          {% if done %}<del>{% endif %}
-          <a href="{{ url_for('leagues.league_task',
-                              league_id=league.id,
-                              task_id=task.id) }}">
-            {{ task.title }}
-          </a>
-          {% if done %}</del>{% endif %}
-          {% if task.due %}
-            <small class="d-block text-muted">
-              Due: {{ task.due.strftime("%b %d, %Y") }}
-            </small>
-          {% endif %}
-        </div>
-        {% if done %}<span class="badge badge-success">✓</span>{% endif %}
-      </li>
-    {% endfor %}
 
-    </ul>
+{# Loop through ordered categories passed from the route #}
+{% for cat in ordered_categories %}
+  {# Get the pre-sorted list of tasks for this category #}
+  {% set tasks_in_category = grouped_tasks.get(cat, []) %} {# Use .get for safety #}
+
+  {# Only display the section if there are tasks in this category #}
+  {% if tasks_in_category %}
+    <div class="mb-8">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">
+        {{ cat }}
+      </h3>
+      <ul role="list" class="divide-y divide-gray-200 bg-white shadow border border-gray-200 sm:rounded-md">
+        {# Iterate through the pre-sorted tasks from the Python route #}
+        {% for task in tasks_in_category %}
+          {% set done = task.id in progress %} {# Check if task ID is in the user's progress set #}
+          <li class="hover:bg-gray-50 transition duration-150 ease-in-out">
+            <a href="{{ url_for('leagues.league_task', league_id=league.id, task_id=task.id) }}" class="block px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                {# Task Title and Due Date #}
+                <div class="truncate">
+                  <p class="text-base font-medium text-osu-orange truncate {{ 'task-del' if done else '' }}">
+                    {{ task.title }}
+                  </p>
+                  {% if task.due %}
+                    <p class="mt-1 flex items-center text-sm text-gray-500 {{ 'task-del' if done else '' }}">
+                      <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                      </svg>
+                      Due: {{ task.due.strftime("%b %d, %Y") }}
+                      {# Add overdue indicator - Check if today_date is defined #}
+                      {% if today_date and not done and task.due and task.due < today_date %}
+                         <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"> Overdue </span>
+                      {% endif %}
+                    </p>
+                  {% else %}
+                     <p class="mt-1 flex items-center text-sm text-gray-400 {{ 'task-del' if done else '' }}">
+                        (No due date set)
+                     </p>
+                  {% endif %}
+                </div>
+                {# Completion Checkmark #}
+                <div class="ml-2 flex-shrink-0">
+                  {% if done %}
+                    <span class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-500">
+                      <svg class="h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  {% else %}
+                     <span class="inline-flex items-center justify-center h-6 w-6 rounded-full border-2 border-gray-300">
+                       {# Empty circle or similar indicator #}
+                     </span>
+                  {% endif %}
+                </div>
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
   {% endif %}
 {% endfor %}
 
+{# Add a message if no tasks were found at all #}
+{# Check if any tasks exist across all groups passed from the route #}
+{% set total_task_count = grouped_tasks.values() | map('length') | sum %}
+{% if not total_task_count %}
+ <div class="text-center text-gray-500 py-8">
+    No tasks have been assigned to this league yet.
+ </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{# Add any specific JS for this page if needed later #}
 {% endblock %}

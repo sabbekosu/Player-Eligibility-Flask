@@ -1,34 +1,286 @@
-{% extends "base.html" %}
-{% block title %}{{ "Edit" if mode=="edit" else "New" }} Task{% endblock %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
+
+{# --- Define base input/textarea classes --- #}
+{% set form_input_classes = "block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange px-3 py-2" %}
+{% set form_textarea_classes = form_input_classes + " font-mono" %} {# Add font-mono for textareas #}
+{% set form_select_classes = "block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange py-2 pl-3 pr-10" %}
+
+{# --- Helper macro to render form fields --- #}
+{% macro render_field(field, type="text", rows=None, grid_class="sm:col-span-3", placeholder=None, help_text=None) %}
+  <div class="{{ grid_class }}">
+    {{ field.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+    {% set error_class = " border-red-500" if field.errors else "" %}
+    {% set base_classes = form_select_classes if field.type == 'SelectField' else (form_textarea_classes if field.type == 'TextAreaField' else form_input_classes) %}
+    {% set final_classes = base_classes + error_class %}
+
+    {% if field.type == 'TextAreaField' %}
+      {{ field(rows=rows, class=final_classes, placeholder=placeholder) }}
+    {% elif field.type == 'SelectField' %}
+       {{ field(class=final_classes) }}
+    {% else %}
+       {{ field(type=type, class=final_classes, placeholder=placeholder) }}
+    {% endif %}
+
+    {% if help_text %} <p class="mt-1 text-xs text-gray-500">{{ help_text }}</p> {% endif %}
+    {% if field.errors %} <p class="mt-1 text-sm text-red-600">{{ field.errors[0] }}</p> {% endif %}
+  </div>
+{% endmacro %}
+{# --- End Macro Definition --- #}
+
+
+{% block title %}
+  {{ "Edit" if mode=="edit" else "New" }} Task - {{ league.name }}
+{% endblock %}
 
 {% block content %}
-<h1>{{ "Edit" if mode=="edit" else "New" }} Task - {{ league.name }}</h1>
-
-<form method="post">
-  {{ form.hidden_tag() }}
-
-  <div class="form-group">
-    {{ form.id.label }} {{ form.id(class="form-control", readonly=mode=="edit") }}
-  </div>
-  <div class="form-group">
-    {{ form.title.label }} {{ form.title(class="form-control") }}
-  </div>
-  <div class="form-group">
-    {{ form.category.label }} {{ form.category(class="form-control") }}
-  </div>
-  <div class="form-group">
-    {{ form.due.label }} {{ form.due(class="form-control") }}
-    <small class="form-text text-muted">YYYY-MM-DD</small>
-  </div>
-  <div class="form-group">
-    {{ form.order.label }} {{ form.order(class="form-control") }}
-    <small class="form-text text-muted">Sort key (“01”, “02”…)</small>
-  </div>
-  <div class="form-group">
-    {{ form.instructions.label }} {{ form.instructions(class="form-control", rows=4) }}
+<div class="bg-white shadow sm:rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <h1 class="text-xl leading-6 font-semibold text-gray-900">
+        {{ "Edit" if mode=="edit" else "New" }} Task
+        {% if mode=="edit" and task_id_display %}
+          (<span class="font-mono text-sm text-gray-600">{{ task_id_display }}</span>) {# Display short task ID #}
+        {% endif %}
+         - <span class="text-osu-orange">{{ league.name }}</span>
+      </h1>
+       <p class="mt-1 max-w-2xl text-sm text-gray-500">
+        Configure the details, links, and templates for this task.
+      </p>
   </div>
 
-  <button class="btn btn-primary">Save</button>
-  <a href="{{ url_for('admin.tasks', lid=league.id) }}" class="btn btn-secondary">Cancel</a>
-</form>
+  <div class="px-4 py-5 sm:p-6">
+      {# Display form errors at the top #}
+      {% if form.errors %}
+        <div class="rounded-md bg-red-50 p-4 mb-6 border border-red-300">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-red-800">Please correct the errors below:</h3>
+              <div class="mt-2 text-sm text-red-700">
+                <ul role="list" class="list-disc space-y-1 pl-5">
+                  {# Iterate through all fields to find errors #}
+                  {% for field_name, error_list in form.errors.items() %}
+                    {% if form[field_name] and form[field_name].label %}
+                      <li>{{ form[field_name].label.text }}: {{ error_list|join(', ') }}</li>
+                    {% else %}
+                       <li>{{ field_name }}: {{ error_list|join(', ') }}</li> {# Fallback for hidden fields etc. #}
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" class="space-y-8 divide-y divide-gray-200">
+        {{ form.hidden_tag() }}
+
+        {# --- Core Details Section --- #}
+        <div class="pt-8 first:pt-0"> {# Remove top padding for the first section #}
+            <div>
+              <h3 class="text-lg font-medium leading-6 text-gray-900">Core Details</h3>
+              <p class="mt-1 text-sm text-gray-500">Basic information and scheduling for the task.</p>
+            </div>
+            <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                {# ID Field #}
+                <div class="sm:col-span-2">
+                  {{ form.id.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                    {% if mode == 'edit' %}
+                      {{ form.id(class=form_input_classes + " bg-gray-100 cursor-not-allowed", readonly=True, value=task_id_display) }}
+                    {% else %}
+                      {{ form.id(class=form_input_classes + (" border-red-500" if form.id.errors else ""), placeholder="e.g., review_reports") }}
+                    {% endif %}
+                  </div>
+                   {% if form.id.errors %} <p class="mt-1 text-sm text-red-600">{{ form.id.errors[0] }}</p> {% endif %}
+                   <p class="mt-1 text-xs text-gray-500">Short ID (unique within league). {{ "Read-only." if mode == 'edit' else "" }}</p>
+                </div>
+
+                {# Title Field #}
+                <div class="sm:col-span-4">
+                  {{ form.title.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                    {{ form.title(class=form_input_classes + (" border-red-500" if form.title.errors else "")) }}
+                  </div>
+                   {% if form.title.errors %} <p class="mt-1 text-sm text-red-600">{{ form.title.errors[0] }}</p> {% endif %}
+                </div>
+
+                {# Category Field #}
+                <div class="sm:col-span-2">
+                  {{ form.category.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                     {{ form.category(class=form_select_classes + (" border-red-500" if form.category.errors else "")) }}
+                  </div>
+                   {% if form.category.errors %} <p class="mt-1 text-sm text-red-600">{{ form.category.errors[0] }}</p> {% endif %}
+                </div>
+
+                {# Due Date Field #}
+                <div class="sm:col-span-2">
+                  {{ form.due.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                    {{ form.due(type="date", class=form_input_classes + (" border-red-500" if form.due.errors else "")) }}
+                  </div>
+                   {% if form.due.errors %} <p class="mt-1 text-sm text-red-600">{{ form.due.errors[0] }}</p> {% endif %}
+                </div>
+
+                 {# Order Field #}
+                <div class="sm:col-span-2">
+                  {{ form.order.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                    {{ form.order(class=form_input_classes + (" border-red-500" if form.order.errors else ""), placeholder="e.g., 01, 02...") }}
+                  </div>
+                  <p class="mt-1 text-xs text-gray-500">Sort key within category.</p>
+                   {% if form.order.errors %} <p class="mt-1 text-sm text-red-600">{{ form.order.errors[0] }}</p> {% endif %}
+                </div>
+
+                {# Instructions Field #}
+                <div class="sm:col-span-6">
+                  {{ form.instructions.label(class="block text-sm font-medium text-gray-700 mb-1") }}
+                  <div class="mt-1">
+                    {{ form.instructions(rows=4, class=form_input_classes + (" border-red-500" if form.instructions.errors else "")) }}
+                  </div>
+                   {% if form.instructions.errors %} <p class="mt-1 text-sm text-red-600">{{ form.instructions.errors[0] }}</p> {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# --- Links & Notes Section --- #}
+        <div class="pt-8">
+            <div>
+              <h3 class="text-lg font-medium leading-6 text-gray-900">Links & Notes</h3>
+              <p class="mt-1 text-sm text-gray-500">Attach relevant URLs, contacts, and internal notes.</p>
+            </div>
+             <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                {# Link 1 #}
+                {{ render_field(form.link_1_url, grid_class="sm:col-span-4", placeholder="https://... or S:/...") }}
+                {{ render_field(form.link_1_label, grid_class="sm:col-span-2", placeholder="e.g., IMLeagues Page") }}
+                 {# Link 2 #}
+                {{ render_field(form.link_2_url, grid_class="sm:col-span-4", placeholder="https://... or S:/...") }}
+                {{ render_field(form.link_2_label, grid_class="sm:col-span-2", placeholder="e.g., Rules Doc") }}
+                 {# Notes #}
+                {{ render_field(form.notes, rows=3, grid_class="sm:col-span-6") }}
+                 {# Contact Info #}
+                {{ render_field(form.contact_info, grid_class="sm:col-span-6", placeholder="e.g., Macer (macer@example.com)") }}
+            </div>
+        </div>
+
+        {# --- Email Helper Section --- #}
+        <div class="pt-8">
+             <div>
+              <h3 class="text-lg font-medium leading-6 text-gray-900">Email Draft Helper</h3>
+              <p class="mt-1 text-sm text-gray-500">Configure fields for the 'Draft Email' button on the task page.</p>
+            </div>
+             <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                 {# Target Address #}
+                {{ render_field(form.email_target_address, grid_class="sm:col-span-3", placeholder="e.g., macer@example.com", help_text="Optional: Pre-fill the 'To' field.") }}
+                 {# Recipient Source #}
+                {{ render_field(form.email_recipient_source, grid_class="sm:col-span-3", placeholder="e.g., Handshake Export Link", help_text="Where to find the recipient list?") }}
+                 {# Subject Template #}
+                 {{ render_field(form.email_template_subject, grid_class="sm:col-span-6", placeholder="e.g., Reminder: {LeagueName} Meeting") }}
+                 {# Body Template #}
+                {{ render_field(form.email_template_body, rows=5, grid_class="sm:col-span-6", placeholder="e.g., Hi Captains,\n\nJust a reminder...") }}
+            </div>
+        </div>
+
+        {# --- Task Specific Fields --- #}
+        <div class="pt-8">
+             <div>
+              <h3 class="text-lg font-medium leading-6 text-gray-900">Task-Specific Details</h3>
+              <p class="mt-1 text-sm text-gray-500">Additional fields relevant to certain common tasks.</p>
+            </div>
+            <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                 {# Task 1/4: Reports & Goals #}
+                {{ render_field(form.previous_report_link) }}
+                {{ render_field(form.report_template_link) }}
+                {{ render_field(form.improvement_goals, rows=3, grid_class="sm:col-span-6") }}
+
+                 {# Task 3: Hire Officials #}
+                {{ render_field(form.imleagues_staff_link) }}
+                <div class="sm:col-span-3"></div> {# Spacer #}
+                {{ render_field(form.offer_letter_template, rows=4, grid_class="sm:col-span-6") }}
+
+                 {# Task 5: Schedule PAC #}
+                {{ render_field(form.pac_instructor_contact) }}
+                {{ render_field(form.pac_scheduled_datetime, type="datetime-local") }}
+
+                 {# Task 6/7: Facilities #}
+                {{ render_field(form.facilities_contact) }}
+                {{ render_field(form.facilities_booking_link) }}
+                {{ render_field(form.imleagues_schedule_link) }}
+                <div class="sm:col-span-3"></div> {# Spacer #}
+                {{ render_field(form.facilities_email_templates, rows=4, grid_class="sm:col-span-6", placeholder="Template 1...\n---\nTemplate 2...") }}
+
+                 {# Task 8: Clinic #}
+                {{ render_field(form.clinic_booking_link) }}
+                {{ render_field(form.clinic_datetime, type="datetime-local") }}
+
+                 {# Task 9: Zoom #}
+                {{ render_field(form.zoom_meeting_link) }}
+                {{ render_field(form.imleagues_paste_location_link) }}
+
+                 {# Task 10/20: Equipment #}
+                {{ render_field(form.inventory_list_link) }}
+                <div class="sm:col-span-3"></div> {# Spacer #}
+                {{ render_field(form.equipment_notes, rows=3, grid_class="sm:col-span-6") }}
+
+                 {# Task 11: Rules #}
+                {{ render_field(form.rules_doc_link) }}
+                {{ render_field(form.imleagues_rules_upload_link) }}
+
+                 {# Task 12: Present PAC #}
+                {{ render_field(form.presentation_slides_link) }}
+                {{ render_field(form.interest_list_link) }}
+
+                 {# Task 13/18: SPAs / WhenToWork #}
+                {{ render_field(form.whentowork_link, grid_class="sm:col-span-2") }}
+                {{ render_field(form.spa_meeting_docs_link, grid_class="sm:col-span-2") }}
+                {{ render_field(form.spa_meeting_datetime, type="datetime-local", grid_class="sm:col-span-2") }}
+
+                 {# Task 14: Message Participants #}
+                {{ render_field(form.imleagues_messaging_link) }}
+                <div class="sm:col-span-3"></div> {# Spacer #}
+                {{ render_field(form.participant_message_templates, rows=4, grid_class="sm:col-span-6") }}
+
+                 {# Task 15: Meeting Slides #}
+                {{ render_field(form.slides_template_link) }}
+                {{ render_field(form.captain_quiz_link) }}
+
+                 {# Task 16: Remind Meeting #}
+                {{ render_field(form.imleagues_email_link, grid_class="sm:col-span-6") }}
+
+                 {# Task 19/21/23: Post-Event Links #}
+                {{ render_field(form.shirt_tracker_link, grid_class="sm:col-span-2") }}
+                {{ render_field(form.flickr_link, grid_class="sm:col-span-2") }}
+                {{ render_field(form.marketing_folder_link, grid_class="sm:col-span-2") }}
+
+                 {# Task 24: Collect Jerseys #}
+                {{ render_field(form.jersey_checkin_link, grid_class="sm:col-span-6") }}
+
+                 {# Task 25: Summary Report #}
+                {{ render_field(form.summary_report_template_link) }}
+                <div class="sm:col-span-3"></div> {# Spacer #}
+                {{ render_field(form.summary_report_draft, rows=5, grid_class="sm:col-span-6") }}
+
+            </div>
+        </div>
+
+        {# --- Action Buttons --- #}
+        <div class="pt-5">
+          <div class="flex justify-end space-x-3">
+            <a href="{{ url_for('admin.tasks', lid=league.id) }}" class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+              Cancel
+            </a>
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-osu-orange hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+              Save Task
+            </button>
+          </div>
+        </div>
+
+      </form>
+  </div> {# End px/py padding div #}
+</div> {# End Card #}
+
 {% endblock %}
+

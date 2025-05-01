@@ -1,20 +1,371 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}{{ task.title }}{% endblock %}
 
-{% block content %}
-<h2>{{ task.title }}</h2>
-<p><strong>Category:</strong> {{ task.category }}</p>
-<p><strong>Due:</strong> {{ task.due }}</p>
-<hr>
-<p>{{ task.instructions }}</p>
+{% block head %}
+{{ super() }} {# Include base head content #}
+<style>
+  /* Custom styles if Tailwind utilities aren't sufficient */
+  .task-section {
+    @apply mb-6 pb-6 border-b border-gray-200; /* Tailwind classes using @apply */
+  }
+  .task-section:last-child {
+    @apply mb-0 pb-0 border-b-0;
+  }
+  .task-section h5 {
+     @apply mb-3 text-base font-semibold text-gray-700;
+  }
+   .task-label {
+    @apply font-semibold text-gray-800 mr-1;
+  }
+   .template-area {
+      @apply bg-gray-100 border border-gray-300 rounded-md p-4 mt-2 whitespace-pre-wrap font-mono text-sm max-h-60 overflow-y-auto;
+  }
+  .copy-btn {
+      @apply text-xs py-0 px-2 ml-2 align-middle;
+  }
+  /* Style for strikethrough text */
+  .task-del {
+    text-decoration: line-through;
+    color: #6b7280; /* gray-500 */
+  }
+</style>
+{% endblock %}
 
-<form method="post" class="mt-3">
-  {% if completed %}
-    <button class="btn btn-warning">Mark as Incomplete</button>
-  {% else %}
-    <button class="btn btn-success">Mark as Complete</button>
-  {% endif %}
-  <a href="{{ url_for('leagues.league_checklist', league_id=request.view_args.league_id) }}"
-     class="btn btn-secondary ml-2">Back to Checklist</a>
-</form>
+
+{% block content %}
+{# Use league_name passed from the route #}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+    {# --- Task Header --- #}
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h2 class="text-xl leading-6 font-semibold text-gray-900 {{ 'task-del' if completed else '' }}">
+                {{ task.title }}
+            </h2>
+            {# Display league name if available #}
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                For: {{ league_name | default('League/Event') }} | Category: {{ task.category }}
+                {% if task.due %}
+                 | Due: <span class="{{ 'task-del' if completed else '' }}">{{ task.due.strftime("%b %d, %Y") }}</span>
+                 {# Add overdue indicator #}
+                 {% if today_date and not completed and task.due and task.due < today_date %} {# Assumes today_date is passed from route #}
+                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800"> Overdue </span>
+                 {% endif %}
+                {% endif %}
+            </p>
+        </div>
+        {# Completion Toggle Form #}
+        <form method="post" class="flex-shrink-0">
+          {% if completed %}
+            <button class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-500 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                Mark as Incomplete
+            </button>
+          {% else %}
+            <button class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                Mark as Complete
+            </button>
+          {% endif %}
+        </form>
+    </div>
+  </div>
+
+  <div class="px-4 py-5 sm:p-6 space-y-6"> {# Add space between sections #}
+
+      {# --- Instructions --- #}
+      {% if task.instructions %}
+      <div class="task-section">
+          <h5>Instructions</h5>
+          <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ task.instructions }}</p>
+      </div>
+      {% endif %}
+
+      {# --- Links --- #}
+      {% set has_links = task.link_1_url or task.link_2_url or task.previous_report_link or task.report_template_link or task.imleagues_staff_link or task.facilities_booking_link or task.imleagues_schedule_link or task.clinic_booking_link or task.zoom_meeting_link or task.imleagues_paste_location_link or task.inventory_list_link or task.rules_doc_link or task.imleagues_rules_upload_link or task.presentation_slides_link or task.interest_list_link or task.whentowork_link or task.imleagues_messaging_link or task.slides_template_link or task.captain_quiz_link or task.imleagues_email_link or task.spa_meeting_docs_link or task.shirt_tracker_link or task.flickr_link or task.marketing_folder_link or task.jersey_checkin_link or task.summary_report_template_link %}
+      {% if has_links %}
+      <div class="task-section">
+          <h5>Relevant Links</h5>
+          <ul class="list-disc list-inside space-y-1 text-sm">
+              {# Function to render a link safely #}
+              {% macro render_link(url, label, default_label) %}
+                  {% if url %}
+                      <li>
+                          <a href="{{ url }}" target="_blank" rel="noopener noreferrer" class="text-osu-orange hover:text-orange-700 hover:underline">
+                              {{ label or default_label or url }}
+                          </a>
+                          {% if url.startswith('http') or url.startswith('//') %}
+                              {# External link icon #}
+                              <svg class="inline-block ml-1 h-3 w-3 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                          {% elif url.startswith('S:') or url.startswith('file:') %}
+                               <span class="ml-1 text-xs text-gray-500">(Local/Network Drive)</span>
+                          {% elif url.startswith('/') %}
+                               <span class="ml-1 text-xs text-gray-500">(Internal App Link)</span>
+                          {% endif %}
+                          {# Add copy button for zoom link #}
+                          {% if default_label == 'Zoom Link' %}
+                            <button class="copy-btn align-middle inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" onclick="copyToClipboard('{{ url }}')">Copy</button>
+                          {% endif %}
+                      </li>
+                  {% endif %}
+              {% endmacro %}
+
+              {# Render specific links first if they exist #}
+              {{ render_link(task.previous_report_link, "Previous Year's Report", "Previous Report") }}
+              {{ render_link(task.report_template_link, "Summary Report Template", "Report Template") }}
+              {{ render_link(task.imleagues_staff_link, "IMLeagues Staff Page", "IMLeagues Staff") }}
+              {{ render_link(task.facilities_booking_link, "Facilities Booking (Mazevo?)", "Facilities Booking") }}
+              {{ render_link(task.imleagues_schedule_link, "IMLeagues Schedule", "IMLeagues Schedule") }}
+              {{ render_link(task.clinic_booking_link, "Clinic Room Booking", "Clinic Booking") }}
+              {{ render_link(task.zoom_meeting_link, "Zoom Meeting Link", "Zoom Link") }}
+              {{ render_link(task.imleagues_paste_location_link, "IMLeagues Page (Paste Link Here)", "IMLeagues Page") }}
+              {{ render_link(task.inventory_list_link, "Equipment Inventory List", "Inventory List") }}
+              {{ render_link(task.rules_doc_link, "Rules Document", "Rules Doc") }}
+              {{ render_link(task.imleagues_rules_upload_link, "IMLeagues Rules Upload", "IMLeagues Upload") }}
+              {{ render_link(task.presentation_slides_link, "PAC Presentation Slides", "PAC Slides") }}
+              {{ render_link(task.interest_list_link, "PAC Interest List", "Interest List") }}
+              {{ render_link(task.whentowork_link, "WhenToWork Schedule", "WhenToWork") }}
+              {{ render_link(task.imleagues_messaging_link, "IMLeagues Messaging Tool", "IMLeagues Messaging") }}
+              {{ render_link(task.slides_template_link, "Manager Meeting Slides Template", "Slides Template") }}
+              {{ render_link(task.captain_quiz_link, "Captain Quiz", "Captain Quiz") }}
+              {{ render_link(task.imleagues_email_link, "IMLeagues Email Tool", "IMLeagues Email") }}
+              {{ render_link(task.spa_meeting_docs_link, "SPA Meeting Documents", "SPA Docs") }}
+              {{ render_link(task.shirt_tracker_link, "Champion Shirt Tracker", "Shirt Tracker") }}
+              {{ render_link(task.flickr_link, "Flickr Album/Upload", "Flickr") }}
+              {{ render_link(task.marketing_folder_link, "Marketing Folder", "Marketing Folder") }}
+              {{ render_link(task.jersey_checkin_link, "Jersey Check-in List/Form", "Jersey Check-in") }}
+              {{ render_link(task.summary_report_template_link, "Summary Report Template", "Summary Template") }}
+
+              {# Render generic links last #}
+              {{ render_link(task.link_1_url, task.link_1_label, "Link 1") }}
+              {{ render_link(task.link_2_url, task.link_2_label, "Link 2") }}
+          </ul>
+      </div>
+      {% endif %}
+
+      {# --- Notes & Contacts --- #}
+       {% if task.notes or task.contact_info or task.pac_instructor_contact or task.facilities_contact or task.improvement_goals or task.equipment_notes %}
+       <div class="task-section">
+           <h5>Notes & Contacts</h5>
+           <div class="space-y-2 text-sm text-gray-700">
+               {% if task.contact_info %}<p><span class="task-label">Contact:</span> {{ task.contact_info }}</p>{% endif %}
+               {% if task.pac_instructor_contact %}<p><span class="task-label">PAC Contact:</span> {{ task.pac_instructor_contact }}</p>{% endif %}
+               {% if task.facilities_contact %}<p><span class="task-label">Facilities Contact:</span> {{ task.facilities_contact }}</p>{% endif %}
+               {% if task.notes %}
+                   <p><span class="task-label">Notes:</span></p>
+                   <p class="whitespace-pre-wrap pl-4">{{ task.notes }}</p>
+               {% endif %}
+                {% if task.improvement_goals %}
+                   <p><span class="task-label">Improvement Goals:</span></p>
+                   <p class="whitespace-pre-wrap pl-4">{{ task.improvement_goals }}</p>
+               {% endif %}
+                {% if task.equipment_notes %}
+                   <p><span class="task-label">Equipment Notes:</span></p>
+                   <p class="whitespace-pre-wrap pl-4">{{ task.equipment_notes }}</p>
+               {% endif %}
+           </div>
+       </div>
+       {% endif %}
+
+      {# --- Email Draft Helpers --- #}
+      {% if task.email_template_subject or task.offer_letter_template or task.facilities_email_templates or task.participant_message_templates %}
+      <div class="task-section">
+          <h5>Email Drafts & Templates</h5>
+          <div class="space-y-4">
+              {# Generic Email Draft Button #}
+              {% if task.email_template_subject and task.email_template_body %}
+                  <div>
+                      {% set mailto_href = "mailto:" + (task.email_target_address if task.email_target_address else '') + "?subject=" + (task.email_template_subject|urlencode) + "&body=" + (task.email_template_body|urlencode) %}
+                      <a href="{{ mailto_href }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+                          <svg class="-ml-0.5 mr-2 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M2.003 5.884L10 11.884l7.997-6M2 18h16V6l-8 5-8-5v12z"></path></svg>
+                          Draft Email
+                      </a>
+                       {% if task.email_recipient_source %}
+                          <p class="mt-1 text-xs text-gray-500">Recipient Source: {{ task.email_recipient_source }}</p>
+                       {% endif %}
+                  </div>
+              {% endif %}
+
+               {# Offer Letter Template #}
+               {% if task.offer_letter_template %}
+                   <div>
+                       <span class="text-sm font-medium text-gray-700">Offer Letter Template:</span>
+                       <button class="copy-btn inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" onclick="copyToClipboard(document.getElementById('offer-template').innerText)">Copy</button>
+                       <div id="offer-template" class="template-area">{{ task.offer_letter_template }}</div>
+                   </div>
+               {% endif %}
+
+               {# Facilities Email Templates #}
+               {% if task.facilities_email_templates %}
+                  <div>
+                       <span class="text-sm font-medium text-gray-700">Facilities Email Templates:</span>
+                       {% for template_part in task.facilities_email_templates.split('---') %}
+                           {% set template_lines = template_part.strip().split('\n', 1) %}
+                           {% set template_subject = template_lines[0] if template_lines else "Template" %}
+                           {% set template_body = template_lines[1] if template_lines|length > 1 else "" %}
+                           <div class="mt-2">
+                               <strong class="text-xs text-gray-600 block">{{ template_subject }}</strong>
+                               <button class="copy-btn inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" onclick="copyToClipboard(document.getElementById('facility-template-{{ loop.index }}').innerText)">Copy Body</button>
+                               <div id="facility-template-{{ loop.index }}" class="template-area">{{ template_body }}</div>
+                           </div>
+                       {% endfor %}
+                   </div>
+               {% endif %}
+
+               {# Participant Message Templates #}
+               {% if task.participant_message_templates %}
+                   <div>
+                       <span class="text-sm font-medium text-gray-700">Participant Message Templates:</span>
+                       <button class="copy-btn inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" onclick="copyToClipboard(document.getElementById('participant-template').innerText)">Copy</button>
+                       <div id="participant-template" class="template-area">{{ task.participant_message_templates }}</div>
+                   </div>
+               {% endif %}
+          </div>
+      </div>
+      {% endif %}
+
+      {# --- Task Specific Actions --- #}
+      {% if task.id.endswith('_check_sportclub_participation') or task.id.endswith('_summary_report') %}
+      <div class="task-section">
+          <h5>Actions</h5>
+           <div class="flex flex-wrap gap-2">
+               {# Task 17: Eligibility Checker Link #}
+               {% if task.id.endswith('_check_sportclub_participation') %}
+                   <a href="{{ url_for('eligibility') }}" class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                       Run Eligibility Check
+                   </a>
+               {% endif %}
+
+               {# Task 25: Summary Report Snippet Generator #}
+               {% if task.id.endswith('_summary_report') %}
+                   <button id="generate-summary-btn" class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                       Generate Draft Report Snippets
+                   </button>
+                   {# Spinner (hidden by default) #}
+                    <div id="summary-spinner" class="hidden ml-2 inline-flex items-center">
+                      <svg class="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+               {% endif %}
+           </div>
+           {# Area for summary snippet results #}
+           {% if task.id.endswith('_summary_report') %}
+               <div id="summary-result-area" class="mt-4 {{ 'hidden' if not task.summary_report_draft else '' }}">
+                   <span class="text-sm font-medium text-gray-700">Generated Snippets:</span>
+                   <button class="copy-btn inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200" onclick="copyToClipboard(document.getElementById('summary-draft-content').innerText)">Copy</button>
+                   <div id="summary-draft-content" class="template-area">{{ task.summary_report_draft | default('', True) }}</div> {# Display existing draft #}
+               </div>
+               <div id="summary-error-area" class="hidden mt-2 rounded-md bg-red-50 p-4">
+                  <p class="text-sm font-medium text-red-800"></p> {# Error message goes here #}
+               </div>
+           {% endif %}
+      </div>
+      {% endif %}
+
+      {# --- Scheduled Dates/Times --- #}
+      {% if task.pac_scheduled_datetime or task.clinic_datetime or task.spa_meeting_datetime %}
+      <div class="task-section">
+          <h5>Scheduled Dates/Times</h5>
+          <ul class="list-disc list-inside space-y-1 text-sm text-gray-700">
+              {% if task.pac_scheduled_datetime %}<li><span class="task-label">PAC Presentation:</span> {{ task.pac_scheduled_datetime.strftime('%b %d, %Y %I:%M %p') if task.pac_scheduled_datetime else 'Not Set' }}</li>{% endif %}
+              {% if task.clinic_datetime %}<li><span class="task-label">Clinic:</span> {{ task.clinic_datetime.strftime('%b %d, %Y %I:%M %p') if task.clinic_datetime else 'Not Set' }}</li>{% endif %}
+              {% if task.spa_meeting_datetime %}<li><span class="task-label">SPA Meeting:</span> {{ task.spa_meeting_datetime.strftime('%b %d, %Y %I:%M %p') if task.spa_meeting_datetime else 'Not Set' }}</li>{% endif %}
+          </ul>
+          {# Add "Add to Calendar" buttons here if implementing API integration later #}
+      </div>
+      {% endif %}
+
+  </div> {# End main content padding #}
+
+  {# --- Footer Actions --- #}
+  <div class="px-4 py-3 bg-gray-50 sm:px-6 border-t border-gray-200">
+      {# *** CORRECTED: Use league_id instead of league.id *** #}
+      <a href="{{ url_for('leagues.league_checklist', league_id=league_id) }}"
+         class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+         Back to Checklist
+      </a>
+  </div>
+
+</div> {# End Card #}
+
+
+{# --- JavaScript for Copy Buttons and Summary Generation --- #}
+{% block scripts %}
+{{ super() }} {# Include scripts from base.html #}
+<script>
+  function copyToClipboard(text) {
+    if (!text) return; // Don't try to copy empty text
+    navigator.clipboard.writeText(text).then(function() {
+      /* Optional: Indicate success */
+      // console.log('Async: Copying to clipboard was successful!');
+      // Maybe replace button text temporarily?
+      alert('Copied to clipboard!'); // Simple feedback
+    }, function(err) {
+      /* Optional: Indicate failure */
+      // console.error('Async: Could not copy text: ', err);
+      alert('Failed to copy text.');
+    });
+  }
+
+  // Summary Snippet Generation
+  const generateBtn = document.getElementById('generate-summary-btn');
+  const resultArea = document.getElementById('summary-result-area');
+  const draftContent = document.getElementById('summary-draft-content');
+  const errorArea = document.getElementById('summary-error-area');
+  const errorText = errorArea ? errorArea.querySelector('p') : null;
+  const spinner = document.getElementById('summary-spinner');
+
+  if (generateBtn) {
+    generateBtn.addEventListener('click', function() {
+      // Show spinner, hide previous results/errors
+      if(spinner) spinner.classList.remove('hidden');
+      if(resultArea) resultArea.classList.add('hidden'); // Hide result area initially
+      if(errorArea) errorArea.classList.add('hidden');
+      generateBtn.disabled = true;
+      generateBtn.classList.add('opacity-50', 'cursor-not-allowed'); // Indicate disabled state
+
+      // Make API call to Flask backend
+      fetch("{{ url_for('leagues.generate_summary_snippet', league_id=league_id, task_id=task.id) }}", {
+          method: 'POST', // Use POST
+          headers: {
+              'Content-Type': 'application/json',
+              // *** CORRECTED: Wrap csrf_token() in Jinja comment to prevent error ***
+              // 'X-CSRFToken': '{# {{ csrf_token() }} #}' // Example if using Flask-WTF CSRF
+          },
+          // body: JSON.stringify({}), // Add body if sending data
+      })
+      .then(response => {
+          if (!response.ok) {
+              // Try to get error message from response body text
+              return response.text().then(text => {
+                  throw new Error(text || `HTTP error! Status: ${response.status}`);
+              });
+          }
+          return response.text(); // Get text response (the snippet)
+      })
+      .then(data => {
+          if(draftContent) draftContent.innerText = data; // Use innerText to handle whitespace correctly
+          if(resultArea) resultArea.classList.remove('hidden'); // Show result area
+          if(errorArea) errorArea.classList.add('hidden');
+      })
+      .catch(error => {
+          console.error('Error generating summary:', error);
+          if(errorText) {
+              errorText.innerText = `Error generating summary: ${error.message}`;
+              if(errorArea) errorArea.classList.remove('hidden'); // Show error area
+          }
+           if(resultArea) resultArea.classList.add('hidden'); // Ensure result area is hidden on error
+      })
+      .finally(() => {
+          // Hide spinner, re-enable button
+          if(spinner) spinner.classList.add('hidden');
+          generateBtn.disabled = false;
+          generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      });
+    });
+  }
+
+</script>
+{% endblock %}
+
 {% endblock %}

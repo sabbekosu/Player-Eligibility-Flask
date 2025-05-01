@@ -1,47 +1,134 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}{{ "Edit" if mode=="edit" else "New" }} League{% endblock %}
 
 {% block content %}
-<h1>{{ "Edit" if mode=="edit" else "New" }} League</h1>
-
-<form method="post">
-  {{ form.hidden_tag() }}
-
-  <!-- ID ----------------------------------------------------------------- -->
-  <div class="form-group">
-    {{ form.id.label }}
-    {{ form.id(class="form-control", readonly=mode=="edit") }}
-    {% if form.id.errors %}<small class="text-danger">{{ form.id.errors[0] }}</small>{% endif %}
+<div class="bg-white shadow sm:rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+    <h1 class="text-xl leading-6 font-semibold text-gray-900">
+      {{ "Edit" if mode=="edit" else "New" }} League
+      {% if mode=="edit" and league_name %}
+        - <span class="text-osu-orange">{{ league_name }}</span>
+      {% endif %}
+    </h1>
+     <p class="mt-1 max-w-2xl text-sm text-gray-500">
+      Define the basic details and type for the league or event.
+    </p>
   </div>
 
-  <!-- Name --------------------------------------------------------------- -->
-  <div class="form-group">
-    {{ form.name.label }}
-    {{ form.name(class="form-control") }}
-    {% if form.name.errors %}<small class="text-danger">{{ form.name.errors[0] }}</small>{% endif %}
-  </div>
+  <div class="px-4 py-5 sm:p-6">
+    {# Display form errors at the top #}
+    {% if form.errors %}
+      <div class="rounded-md bg-red-50 p-4 mb-6 border border-red-300">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-800">Please correct the errors below:</h3>
+            <div class="mt-2 text-sm text-red-700">
+              <ul role="list" class="list-disc space-y-1 pl-5">
+                {% for field, errors in form.errors.items() %}
+                  <li>{{ form[field].label.text }}: {{ errors|join(', ') }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
-  <!-- Kind (League / Tournament) ---------------------------------------- -->
-  <div class="form-group">
-    {{ form.kind.label }}
-    {{ form.kind(class="form-control") }}
-  </div>
+    <form method="post" class="space-y-6">
+      {{ form.hidden_tag() }}
 
-  <!-- Officiated --------------------------------------------------------- -->
-  <div class="form-group">
-    {{ form.officiated.label }}
-    {{ form.officiated(class="form-control") }}
-  </div>
-  <!-- Start/End Dates ---------------------------------------------------- -->
-  <div class="form-group">
-    {{ form.season_start.label }} {{ form.season_start(class="form-control") }}
-  </div>
-  <div class="form-group">
-    {{ form.season_end.label }} {{ form.season_end(class="form-control") }}
-  </div>
-  
+      {# --- Basic Details --- #}
+      <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+        {# ID Field #}
+        <div class="sm:col-span-3">
+          {{ form.id.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+            {# Added border, padding, removed sm:text-sm #}
+            {{ form.id(class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange px-3 py-2" + (" bg-gray-100 cursor-not-allowed" if mode=="edit" else "") + (" border-red-500" if form.id.errors else ""), readonly=(mode=="edit")) }}
+          </div>
+          {% if form.id.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.id.errors[0] }}</p>
+          {% endif %}
+           <p class="mt-1 text-xs text-gray-500">Short, unique identifier (e.g., 'soccer_winter25', 'flag_football_league'). Cannot be changed after creation.</p>
+        </div>
 
-  <button class="btn btn-primary">Save</button>
-  <a href="{{ url_for('admin.leagues') }}" class="btn btn-secondary">Cancel</a>
-</form>
+        {# Name Field #}
+        <div class="sm:col-span-3">
+          {{ form.name.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+             {# Added border, padding, removed sm:text-sm #}
+            {{ form.name(class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange px-3 py-2" + (" border-red-500" if form.name.errors else "")) }}
+          </div>
+           {% if form.name.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.name.errors[0] }}</p>
+          {% endif %}
+        </div>
+
+        {# Kind (League / Tournament) #}
+        <div class="sm:col-span-3">
+          {{ form.kind.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+             {# Kept select styling, ensure py-2 for height #}
+            {{ form.kind(class="block w-full rounded-md border border-gray-300 py-2 pl-3 pr-10 focus:border-osu-orange focus:outline-none focus:ring-osu-orange shadow-sm" + (" border-red-500" if form.kind.errors else "")) }}
+          </div>
+           {% if form.kind.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.kind.errors[0] }}</p>
+          {% endif %}
+        </div>
+
+        {# Officiated #}
+        <div class="sm:col-span-3">
+          {{ form.officiated.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+              {# Kept select styling, ensure py-2 for height #}
+             {{ form.officiated(class="block w-full rounded-md border border-gray-300 py-2 pl-3 pr-10 focus:border-osu-orange focus:outline-none focus:ring-osu-orange shadow-sm" + (" border-red-500" if form.officiated.errors else "")) }}
+          </div>
+           {% if form.officiated.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.officiated.errors[0] }}</p>
+          {% endif %}
+        </div>
+
+        {# Season Start Date #}
+        <div class="sm:col-span-3">
+          {{ form.season_start.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+             {# Added border, padding, removed sm:text-sm #}
+            {{ form.season_start(type="date", class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange px-3 py-2" + (" border-red-500" if form.season_start.errors else "")) }}
+          </div>
+           {% if form.season_start.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.season_start.errors[0] }}</p>
+          {% endif %}
+        </div>
+
+        {# Season End Date #}
+        <div class="sm:col-span-3">
+          {{ form.season_end.label(class="block text-sm font-medium text-gray-700") }}
+          <div class="mt-1">
+             {# Added border, padding, removed sm:text-sm #}
+            {{ form.season_end(type="date", class="block w-full rounded-md border border-gray-300 shadow-sm focus:border-osu-orange focus:ring-osu-orange px-3 py-2" + (" border-red-500" if form.season_end.errors else "")) }}
+          </div>
+           {% if form.season_end.errors %}
+            <p class="mt-2 text-sm text-red-600">{{ form.season_end.errors[0] }}</p>
+          {% endif %}
+        </div>
+      </div> {# End Grid #}
+
+      {# --- Action Buttons --- #}
+      <div class="pt-5 mt-6 border-t border-gray-200">
+        <div class="flex justify-end space-x-3">
+          <a href="{{ url_for('admin.leagues') }}" class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+            Cancel
+          </a>
+          <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-osu-orange hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+            Save League
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div> {# End px/py padding div #}
+</div> {# End Card #}
 {% endblock %}

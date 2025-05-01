@@ -1,40 +1,83 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}Results – IM Team Club Player Checker{% endblock %}
 
 {% block head %}
+{{ super() }}
 <style>
-  :root{--osu-orange:#FF6600;--osu-black:#000;--osu-white:#fff}
-  .header{background:var(--osu-black);color:var(--osu-orange);padding:20px;text-align:center;margin-bottom:30px}
-  .content-container{max-width:800px;margin:auto}
+  /* Custom styles if needed */
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="header"><h1>Results – IM Team Club Player Checker</h1></div>
+<div class="bg-white shadow sm:rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+    <h1 class="text-xl leading-6 font-semibold text-gray-900">
+      Eligibility Check Results
+    </h1>
+    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+      Based on a limit of {{ max_club_players }} club player(s) per team.
+    </p>
+  </div>
 
-<div class="container content-container">
-  {% if violations %}
-    <h2 class="text-danger">
-      Teams Violating Club Player Limit (More than {{ max_club_players }} club players):
-    </h2>
-    <ul class="list-group">
-      {% for team, count in violations.items() %}
-        <li class="list-group-item"><strong>{{ team }}</strong> has <strong>{{ count }}</strong> club players.</li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <h2 class="text-success">No teams violating the {{ max_club_players }} club player limit!</h2>
-  {% endif %}
+  <div class="px-4 py-5 sm:p-6 space-y-6">
 
-  <h2 class="mt-4">Summary of Club Players on Rosters:</h2>
-  <ul class="list-group">
-    {% for team, members in team_club_members.items() if members %}
-      <li class="list-group-item{% if team in violations %} text-danger{% endif %}">
-        <strong>{{ team }}</strong>: {{ members|join(", ") }}
-      </li>
-    {% endfor %}
-  </ul>
+    {# --- Violations Section --- #}
+    <div>
+      {% if violations %}
+        <h2 class="text-lg font-medium text-red-700 mb-3">
+          Teams Violating Club Player Limit (More than {{ max_club_players }} club players):
+        </h2>
+        <ul role="list" class="divide-y divide-gray-200 border border-red-300 rounded-md">
+          {% for team, count in violations.items() %}
+            <li class="px-4 py-3 sm:px-6 bg-red-50">
+              <span class="font-semibold text-red-800">{{ team }}</span> has <span class="font-bold">{{ count }}</span> club players.
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="rounded-md bg-green-50 p-4 border border-green-300">
+           <div class="flex">
+             <div class="flex-shrink-0">
+               <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+             </div>
+             <div class="ml-3">
+               <h3 class="text-sm font-medium text-green-800">No Violations Found!</h3>
+               <div class="mt-1 text-sm text-green-700">
+                 <p>All teams comply with the {{ max_club_players }} club player limit.</p>
+               </div>
+             </div>
+           </div>
+         </div>
+      {% endif %}
+    </div>
 
-  <a href="{{ url_for('eligibility') }}" class="btn btn-secondary mt-3">Back to Form</a>
-</div>
+    {# --- Summary Section --- #}
+    <div>
+      <h2 class="text-lg font-medium text-gray-900 mb-3">Summary of Club Players on Rosters:</h2>
+       {% if team_club_members %}
+        <ul role="list" class="divide-y divide-gray-200 border border-gray-300 rounded-md">
+          {% for team, members in team_club_members.items() if members %} {# Only show teams with club players #}
+            <li class="px-4 py-3 sm:px-6 {{ 'bg-red-50' if team in violations else 'bg-white' }}">
+              <span class="font-semibold {{ 'text-red-800' if team in violations else 'text-gray-900' }}">{{ team }}</span>:
+              <span class="{{ 'text-red-700' if team in violations else 'text-gray-600' }}">{{ members|join(", ") }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+       {% else %}
+        <p class="text-sm text-gray-500">No club players were found on any of the IM team rosters provided.</p>
+       {% endif %}
+    </div>
+
+    {# --- Back Button --- #}
+    <div class="pt-5">
+      <div class="flex justify-start">
+        <a href="{{ url_for('eligibility') }}" class="inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+          Back to Form
+        </a>
+      </div>
+    </div>
+
+  </div> {# End px/py padding div #}
+</div> {# End Card #}
 {% endblock %}
+

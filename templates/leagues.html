@@ -1,17 +1,79 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}Your Leagues{% endblock %}
 
 {% block content %}
-<h1>Your Intramural Leagues</h1>
+<div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+  <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+    <h1 class="text-xl leading-6 font-semibold text-gray-900">
+      Your Intramural Leagues & Events
+    </h1>
+    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+      Select a league or event to view its checklist and track your progress.
+    </p>
+  </div>
+  <div class="bg-gray-50">
+    <ul role="list" class="divide-y divide-gray-200">
+      {% for league in leagues %}
+        {% set total_tasks = league.tasks|length %}
+        {# Calculate completion based on the progress map passed from the route #}
+        {% set done_count = progress.get(league.id, [])|length %}
+        {% set percentage = (done_count / total_tasks * 100) if total_tasks > 0 else 0 %}
 
-<div class="list-group">
-  {% for league in leagues %}
-    {% set done = progress.get(league.id, [])|length %}
-    <a href="{{ url_for('leagues.league_checklist', league_id=league.id) }}"
-       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-      {{ league.name }}
-      <span class="badge badge-primary badge-pill">{{ done }}/{{ league.tasks|length }}</span>
-    </a>
-  {% endfor %}
+        <li>
+          <a href="{{ url_for('leagues.league_checklist', league_id=league.id) }}" class="block hover:bg-gray-100 transition duration-150 ease-in-out">
+            <div class="px-4 py-4 sm:px-6">
+              <div class="flex items-center justify-between">
+                <p class="text-base font-medium text-osu-orange truncate">
+                  {{ league.name }}
+                </p>
+                <div class="ml-2 flex-shrink-0 flex">
+                  {# Progress Badge #}
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ 'bg-green-100 text-green-800' if done_count == total_tasks and total_tasks > 0 else ('bg-blue-100 text-blue-800' if done_count > 0 else 'bg-gray-100 text-gray-800') }}">
+                    {{ done_count }}/{{ total_tasks }} tasks done
+                  </span>
+                </div>
+              </div>
+              {# Optional: Add more info like season dates if available #}
+              <div class="mt-2 sm:flex sm:justify-between">
+                <div class="sm:flex">
+                  <p class="flex items-center text-sm text-gray-500">
+                    {# Kind/Officiated Icon/Text (Example) #}
+                    {% if league.kind == 'tournament' %}
+                      <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" /></svg>
+                      {{ league.kind|capitalize }}
+                    {% else %}
+                       <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" /></svg>
+                      {{ league.kind|capitalize }}
+                    {% endif %}
+                    <span class="mx-2 text-gray-300">|</span>
+                     {% if league.officiated %}
+                       <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                       Officiated
+                     {% else %}
+                        <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        Non-Officiated
+                     {% endif %}
+                  </p>
+                </div>
+                {# Progress Bar (Optional visual) #}
+                <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 w-full sm:w-1/4">
+                   <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700">
+                     <div class="bg-osu-orange h-1.5 rounded-full" style="width: {{ percentage }}%"></div>
+                   </div>
+                   <span class="ml-2 text-xs">{{ percentage|round|int }}%</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        </li>
+      {% else %}
+        <li>
+          <div class="px-4 py-4 sm:px-6 text-center text-gray-500">
+            No leagues or events found. Admins can create them in the Admin section.
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
 </div>
 {% endblock %}

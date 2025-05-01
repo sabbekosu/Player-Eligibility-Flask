@@ -1,95 +1,196 @@
-from flask import Blueprint, render_template, redirect, url_for, request, abort
+# admin.py
+from flask import Blueprint, render_template, redirect, url_for, request, abort, flash
+# Import login_required and current_user
+from flask_login import login_required, current_user
+from functools import wraps # For role checking decorator
+
 from flask_wtf import FlaskForm
 import re
-from wtforms import StringField, SelectField, DateField, TextAreaField
-from wtforms.validators import DataRequired
-from db import SessionLocal
-from models import League as DBLeague, Task as DBTask, TemplateTask
-from sqlalchemy.orm import selectinload
-from datetime import timedelta
+from wtforms import StringField, SelectField, DateField, TextAreaField, DateTimeField
+from wtforms.validators import DataRequired, Optional
 
-from league_checklist import get_league 
+from db import SessionLocal
+from models import League as DbLeague, Task as DbTask, TemplateTask as DbTemplateTask, User # Import User
+from sqlalchemy.orm import selectinload, joinedload
+from datetime import date, timedelta, datetime
+
+# --- Local get_league if not importing ---
+def get_league(league_id: str) -> DbLeague | None:
+    """Return League with tasks eagerly loaded (safe outside session)."""
+    with SessionLocal() as db:
+        return (
+            db.query(DbLeague)
+              .options(joinedload(DbLeague.tasks))
+              .get(league_id)
+        )
+# -----------------------------------------
 
 admin = Blueprint("admin", __name__, url_prefix="/admin",
                   template_folder="templates")
 
-# ── Forms ────────────────────────────────────────────────────────────────────
+# --- Role Checking Decorator (Optional but recommended) ---
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role != 'admin':
+            flash('Admin access required for this page.', 'danger')
+            # Redirect to home or login page if preferred
+            # return redirect(url_for('home'))
+            abort(403) # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Forms (Keep existing TaskForm and LeagueForm) ---
 class LeagueForm(FlaskForm):
     id   = StringField("ID", validators=[DataRequired()])
     name = StringField("Name", validators=[DataRequired()])
-    season_start = DateField("Season start", format="%Y-%m-%d")
-    season_end   = DateField("Season end",   format="%Y-%m-%d")
+    season_start = DateField("Season start", format="%Y-%m-%d", validators=[Optional()])
+    season_end   = DateField("Season end",   format="%Y-%m-%d", validators=[Optional()])
     kind = SelectField("Kind", choices=[("league","League"),("tournament","Tournament")])
     officiated = SelectField("Officials", choices=[("yes","Officiated"),("no","Non-officiated")])
 
-
 class TaskForm(FlaskForm):
-    id    = StringField("ID", validators=[DataRequired()])
-    title = StringField("Title", validators=[DataRequired()])
+    # Core Task Fields
+    id    = StringField("ID", validators=[DataRequired(message="Task ID is required.")])
+    title = StringField("Title", validators=[DataRequired(message="Title is required.")])
     category = SelectField("Category",
                            choices=[("Pre-League","Pre-League"),
-                                    ("Post-League","Post-League")])
-    due   = DateField("Due", format="%Y-%m-%d")
-    order = StringField("Order")
-    instructions = TextAreaField("Instructions")
+                                    ("Post-League","Post-League"),
+                                    ("Pre-Event", "Pre-Event"),
+                                    ("Post-Event", "Post-Event")],
+                           validators=[DataRequired()])
+    due   = DateField("Due Date (YYYY-MM-DD)", format="%Y-%m-%d", validators=[Optional()])
+    order = StringField("Sort Order", validators=[Optional()])
+    instructions = TextAreaField("Instructions", validators=[Optional()])
+    # --- NEW FIELDS (Keep all from previous version) ---
+    link_1_url = StringField("Link 1 URL", validators=[Optional()])
+    link_1_label = StringField("Link 1 Label", validators=[Optional()])
+    link_2_url = StringField("Link 2 URL", validators=[Optional()])
+    link_2_label = StringField("Link 2 Label", validators=[Optional()])
+    notes = TextAreaField("Notes", validators=[Optional()])
+    contact_info = StringField("Contact Info", validators=[Optional()])
+    email_template_subject = StringField("Email Template Subject", validators=[Optional()])
+    email_template_body = TextAreaField("Email Template Body", validators=[Optional()])
+    email_recipient_source = StringField("Email Recipient Source Hint", validators=[Optional()])
+    email_target_address = StringField("Specific Email Target", validators=[Optional()])
+    previous_report_link = StringField("Previous Report Link", validators=[Optional()])
+    improvement_goals = TextAreaField("Improvement Goals", validators=[Optional()])
+    imleagues_staff_link = StringField("IMLeagues Staff Link", validators=[Optional()])
+    offer_letter_template = TextAreaField("Offer Letter Template", validators=[Optional()])
+    report_template_link = StringField("Report Template Link", validators=[Optional()])
+    pac_instructor_contact = StringField("PAC Instructor Contact", validators=[Optional()])
+    pac_scheduled_datetime = DateTimeField("PAC Scheduled DateTime (YYYY-MM-DD HH:MM)", format="%Y-%m-%d %H:%M", validators=[Optional()])
+    facilities_contact = StringField("Facilities Contact", validators=[Optional()])
+    facilities_booking_link = StringField("Facilities Booking Link", validators=[Optional()])
+    facilities_email_templates = TextAreaField("Facilities Email Templates", validators=[Optional()])
+    imleagues_schedule_link = StringField("IMLeagues Schedule Link", validators=[Optional()])
+    clinic_booking_link = StringField("Clinic Booking Link", validators=[Optional()])
+    clinic_datetime = DateTimeField("Clinic DateTime (YYYY-MM-DD HH:MM)", format="%Y-%m-%d %H:%M", validators=[Optional()])
+    zoom_meeting_link = StringField("Zoom Meeting Link", validators=[Optional()])
+    imleagues_paste_location_link = StringField("IMLeagues Paste Location Link", validators=[Optional()])
+    inventory_list_link = StringField("Inventory List Link", validators=[Optional()])
+    equipment_notes = TextAreaField("Equipment Notes", validators=[Optional()])
+    rules_doc_link = StringField("Rules Doc Link", validators=[Optional()])
+    imleagues_rules_upload_link = StringField("IMLeagues Rules Upload Link", validators=[Optional()])
+    presentation_slides_link = StringField("Presentation Slides Link", validators=[Optional()])
+    interest_list_link = StringField("Interest List Link", validators=[Optional()])
+    whentowork_link = StringField("WhenToWork Link", validators=[Optional()])
+    imleagues_messaging_link = StringField("IMLeagues Messaging Link", validators=[Optional()])
+    participant_message_templates = TextAreaField("Participant Message Templates", validators=[Optional()])
+    slides_template_link = StringField("Slides Template Link", validators=[Optional()])
+    captain_quiz_link = StringField("Captain Quiz Link", validators=[Optional()])
+    imleagues_email_link = StringField("IMLeagues Email Link", validators=[Optional()])
+    spa_meeting_docs_link = StringField("SPA Meeting Docs Link", validators=[Optional()])
+    spa_meeting_datetime = DateTimeField("SPA Meeting DateTime (YYYY-MM-DD HH:MM)", format="%Y-%m-%d %H:%M", validators=[Optional()])
+    shirt_tracker_link = StringField("Shirt Tracker Link", validators=[Optional()])
+    flickr_link = StringField("Flickr Link", validators=[Optional()])
+    marketing_folder_link = StringField("Marketing Folder Link", validators=[Optional()])
+    jersey_checkin_link = StringField("Jersey Check-in Link", validators=[Optional()])
+    summary_report_template_link = StringField("Summary Report Template Link", validators=[Optional()])
+    summary_report_draft = TextAreaField("Summary Report Draft Snippets", validators=[Optional()])
+    # --- End New Fields ---
 
+
+# --- resolve_due function (Keep existing) ---
 def resolve_due(token, season_start, season_end, task_lookup=None):
-    """
-    Translate a compact due-date token into an absolute date.
-      W-3          → 3 weeks before season_start
-      D-10         → 10 days before season_start
-      W+1e         → 1 week  after  season_end
-      D+2t:task_id → 2 days  after  the absolute date of task_id
-    """
+    # ... (keep existing code from previous version) ...
     if not token:
         return None
     if task_lookup is None:
-        task_lookup = {}
+        task_lookup = {} # Maps task_ref_id to its resolved due date (datetime object or None)
 
-    # --- weeks relative to season start / end ------------------------------
-    m = re.match(r"W([-+])(\d+)(e?)$", token, re.I)
-    if m and season_start:
-        sign, num, to_end = m.groups()
-        num = int(num)
-        base = season_end if to_end else season_start
-        delta = timedelta(weeks=num)
-        return base + delta if sign == "+" else base - delta
+    try:
+        # --- weeks relative to season start / end ------------------------------
+        m = re.match(r"W([-+])(\d+)(e?)$", token, re.I)
+        if m:
+            sign, num, to_end = m.groups()
+            num = int(num)
+            base = season_end if to_end else season_start
+            if not base: return None # Need base date
+            delta = timedelta(weeks=num)
+            # Ensure base is datetime before adding timedelta
+            if isinstance(base, date) and not isinstance(base, datetime):
+                base = datetime.combine(base, datetime.min.time())
+            return base + delta if sign == "+" else base - delta
 
-    # --- days relative to season start / end -------------------------------
-    m = re.match(r"D([-+])(\d+)(e?)$", token, re.I)
-    if m and season_start:
-        sign, num, to_end = m.groups()
-        num = int(num)
-        base = season_end if to_end else season_start
-        delta = timedelta(days=num)
-        return base + delta if sign == "+" else base - delta
+        # --- days relative to season start / end -------------------------------
+        m = re.match(r"D([-+])(\d+)(e?)$", token, re.I)
+        if m:
+            sign, num, to_end = m.groups()
+            num = int(num)
+            base = season_end if to_end else season_start
+            if not base: return None # Need base date
+            delta = timedelta(days=num)
+            # Ensure base is datetime before adding timedelta
+            if isinstance(base, date) and not isinstance(base, datetime):
+                base = datetime.combine(base, datetime.min.time())
+            return base + delta if sign == "+" else base - delta
 
-    # --- days after another task ------------------------------------------
-    m = re.match(r"D\+(\d+)t:(\w+)", token, re.I)
-    if m:
-        days, dep = m.groups()
-        base = task_lookup.get(dep)
-        if base:
-            return base + timedelta(days=int(days))
+        # --- days after another task (uses task_ref_id) ------------------------
+        m = re.match(r"D\+(\d+)t:([\w-]+)", token, re.I) # Allow hyphens in task_ref_id
+        if m:
+            days, dep_ref_id = m.groups()
+            base_date = task_lookup.get(dep_ref_id) # Look up by task_ref_id
+            if base_date and isinstance(base_date, (date, datetime)): # Check if base date exists and is valid date/datetime
+                 # Ensure base_date is datetime before adding timedelta
+                if not isinstance(base_date, datetime):
+                    base_date = datetime.combine(base_date, datetime.min.time())
+                return base_date + timedelta(days=int(days))
+            else:
+                # print(f"Warning: Dependency task '{dep_ref_id}' for token '{token}' not found or has no date.")
+                return None # Dependency not met or has no date
+
+    except (ValueError, TypeError) as e:
+        # print(f"Error resolving due date token '{token}': {e}")
+        return None # Invalid number or date operation
 
     # fallback – unknown pattern
+    # print(f"Warning: Unrecognized due date token pattern: '{token}'")
     return None
 
 
-# ── League CRUD ──────────────────────────────────────────────────────────────
+# ── Routes (Apply decorators) ─────────────────────────────────────────────────
+
 @admin.route("/leagues")
+@login_required # Protect this route
+@admin_required # Example: Only admins can see the league list
 def leagues():
+    # ... (keep existing code) ...
     with SessionLocal() as db:
         rows = (
-            db.query(DBLeague)
-              .options(selectinload(DBLeague.tasks))   # eager-load
-              .order_by(DBLeague.name)
+            db.query(DbLeague)
+              .options(selectinload(DbLeague.tasks))
+              .order_by(DbLeague.name)
               .all()
         )
     return render_template("admin/leagues.html", leagues=rows)
 
+
 @admin.route("/leagues/new", methods=["GET","POST"])
+@login_required
+@admin_required # Only admins can create leagues
 def league_new():
+    # ... (keep existing code from previous version) ...
     form = LeagueForm()
     if form.validate_on_submit():
         tmpl_lookup = {
@@ -98,9 +199,13 @@ def league_new():
             ("tournament","yes"):"officiated_event",
             ("tournament","no"): "nonofficiated_event",
         }
-        template_id = tmpl_lookup[(form.kind.data, form.officiated.data)]
+        template_id = tmpl_lookup.get((form.kind.data, form.officiated.data))
 
-        league = DBLeague(
+        if not template_id:
+            flash("Could not determine template ID.", "error")
+            return render_template("admin/league_form.html", form=form, mode="new")
+
+        league = DbLeague(
             id=form.id.data,
             name=form.name.data,
             kind=form.kind.data,
@@ -111,163 +216,247 @@ def league_new():
         )
 
         with SessionLocal() as db:
+            if db.get(DbLeague, form.id.data):
+                flash(f"League with ID '{form.id.data}' already exists.", "error")
+                return render_template("admin/league_form.html", form=form, mode="new")
+
             db.add(league)
-            # clone tasks from template
+            db.flush()
+
             tmpl_tasks = (
-                db.query(TemplateTask)
+                db.query(DbTemplateTask)
                   .filter_by(template_id=template_id)
+                  .order_by(DbTemplateTask.order)
                   .all()
             )
-            task_lookup = {}
-            for t in tmpl_tasks:
-                abs_due = resolve_due(t.relative_due,
-                          league.season_start,
-                          league.season_end,
-                          task_lookup)
-                db.add(DBTask(
-                    id=f"{league.id}_{t.id}",
+
+            if not tmpl_tasks:
+                 flash(f"Warning: No template tasks found for template ID '{template_id}'.", "warning")
+
+            resolved_due_dates = {}
+            new_tasks = []
+            for t_tmpl in tmpl_tasks:
+                abs_due = resolve_due(
+                    t_tmpl.relative_due,
+                    league.season_start,
+                    league.season_end,
+                    resolved_due_dates
+                )
+                resolved_due_dates[t_tmpl.task_ref_id] = abs_due
+
+                new_task = DbTask(
+                    id=f"{league.id}_{t_tmpl.task_ref_id}",
                     league_id=league.id,
-                    title=t.title,
-                    category=t.category,
-                    due=abs_due,             # will compute later
-                    order=t.order,
-                    instructions=t.instructions,
-                ))
-                task_lookup[t.id] = abs_due
-            db.commit()
+                    title=t_tmpl.title,
+                    category=t_tmpl.category,
+                    # Store only date part if resolved, handle None
+                    due=abs_due.date() if isinstance(abs_due, datetime) else (abs_due if isinstance(abs_due, date) else None),
+                    order=t_tmpl.order,
+                    instructions=t_tmpl.instructions,
+                    # Copy ALL new fields...
+                    link_1_url=t_tmpl.link_1_url, link_1_label=t_tmpl.link_1_label,
+                    link_2_url=t_tmpl.link_2_url, link_2_label=t_tmpl.link_2_label,
+                    notes=t_tmpl.notes, contact_info=t_tmpl.contact_info,
+                    email_template_subject=t_tmpl.email_template_subject, email_template_body=t_tmpl.email_template_body,
+                    email_recipient_source=t_tmpl.email_recipient_source, email_target_address=t_tmpl.email_target_address,
+                    previous_report_link=t_tmpl.previous_report_link, improvement_goals=t_tmpl.improvement_goals,
+                    imleagues_staff_link=t_tmpl.imleagues_staff_link, offer_letter_template=t_tmpl.offer_letter_template,
+                    report_template_link=t_tmpl.report_template_link, pac_instructor_contact=t_tmpl.pac_instructor_contact,
+                    facilities_contact=t_tmpl.facilities_contact, facilities_booking_link=t_tmpl.facilities_booking_link,
+                    facilities_email_templates=t_tmpl.facilities_email_templates, imleagues_schedule_link=t_tmpl.imleagues_schedule_link,
+                    clinic_booking_link=t_tmpl.clinic_booking_link, zoom_meeting_link=t_tmpl.zoom_meeting_link,
+                    imleagues_paste_location_link=t_tmpl.imleagues_paste_location_link, inventory_list_link=t_tmpl.inventory_list_link,
+                    equipment_notes=t_tmpl.equipment_notes, rules_doc_link=t_tmpl.rules_doc_link,
+                    imleagues_rules_upload_link=t_tmpl.imleagues_rules_upload_link, presentation_slides_link=t_tmpl.presentation_slides_link,
+                    interest_list_link=t_tmpl.interest_list_link, whentowork_link=t_tmpl.whentowork_link,
+                    imleagues_messaging_link=t_tmpl.imleagues_messaging_link, participant_message_templates=t_tmpl.participant_message_templates,
+                    slides_template_link=t_tmpl.slides_template_link, captain_quiz_link=t_tmpl.captain_quiz_link,
+                    imleagues_email_link=t_tmpl.imleagues_email_link, spa_meeting_docs_link=t_tmpl.spa_meeting_docs_link,
+                    shirt_tracker_link=t_tmpl.shirt_tracker_link, flickr_link=t_tmpl.flickr_link,
+                    marketing_folder_link=t_tmpl.marketing_folder_link, jersey_checkin_link=t_tmpl.jersey_checkin_link,
+                    summary_report_template_link=t_tmpl.summary_report_template_link, summary_report_draft=t_tmpl.summary_report_draft,
+                )
+                new_tasks.append(new_task)
+
+            db.add_all(new_tasks)
+            try:
+                db.commit()
+                flash(f"League '{league.name}' created successfully with {len(new_tasks)} tasks.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error creating league: {e}", "error")
+                print(f"Database Commit Error: {e}")
+                return render_template("admin/league_form.html", form=form, mode="new")
+
         return redirect(url_for("admin.leagues"))
+    else:
+        if request.method == 'POST':
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
 
     return render_template("admin/league_form.html", form=form, mode="new")
 
 
 @admin.route("/leagues/<lid>/edit", methods=["GET","POST"])
+@login_required
+@admin_required # Only admins can edit leagues
 def league_edit(lid):
+    # ... (keep existing code from previous version) ...
     with SessionLocal() as db:
-        league = db.get(DBLeague, lid) or abort(404)
+        league = db.query(DbLeague).options(selectinload(DbLeague.tasks)).filter(DbLeague.id == lid).first()
+        if not league:
+            abort(404)
         form = LeagueForm(obj=league)
         if form.validate_on_submit():
-            form.populate_obj(league)
-            db.commit()
+            league.name = form.name.data
+            league.season_start = form.season_start.data
+            league.season_end = form.season_end.data
+            league.kind = form.kind.data
+            league.officiated = (form.officiated.data == "yes")
+            try:
+                db.commit()
+                flash(f"League '{league.name}' updated successfully.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error updating league: {e}", "error")
+                print(f"Database Commit Error: {e}")
             return redirect(url_for(".leagues"))
-    return render_template("admin/league_form.html", form=form, mode="edit")
+        elif request.method == 'POST':
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
+    return render_template("admin/league_form.html", form=form, mode="edit", league_name=league.name)
+
 
 @admin.route("/leagues/<lid>/delete", methods=["POST"])
+@login_required
+@admin_required # Only admins can delete leagues
 def league_delete(lid):
+    # ... (keep existing code) ...
     with SessionLocal() as db:
-        league = db.get(DBLeague, lid) or abort(404)
-        db.delete(league); db.commit()
+        league = db.get(DbLeague, lid)
+        if league:
+            try:
+                db.delete(league)
+                db.commit()
+                flash(f"League '{league.name}' deleted successfully.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error deleting league: {e}", "error")
+                print(f"Database Commit Error: {e}")
+        else:
+            flash("League not found.", "error")
+            abort(404) # Abort on POST if not found, maybe return error instead?
     return redirect(url_for(".leagues"))
 
-# ── Task CRUD (nested under league) ──────────────────────────────────────────
+
 @admin.route("/leagues/<lid>/tasks")
+@login_required
+@admin_required # Only admins can view the task list editor
 def tasks(lid):
-    league = get_league(lid) or abort(404)
+    # ... (keep existing code) ...
+    league = get_league(lid)
+    if not league:
+        abort(404)
     return render_template("admin/tasks.html", league=league)
 
+
 @admin.route("/leagues/<lid>/tasks/new", methods=["GET", "POST"])
+@login_required
+@admin_required # Only admins can create new tasks
 def task_new(lid):
-    league = get_league(lid) or abort(404)
+    # ... (keep existing code from previous version) ...
+    league = get_league(lid)
+    if not league:
+        abort(404)
     form = TaskForm()
-
     if form.validate_on_submit():
-        task = DBTask(
-            id=form.id.data,
-            league_id=lid,
-            title=form.title.data,
-            category=form.category.data,
-            due=form.due.data,
-            order=form.order.data,
-            instructions=form.instructions.data,
-        )
-        with SessionLocal() as db:
-            db.add(task)
-            db.commit()
-        return redirect(url_for("admin.tasks", lid=lid))
+        full_task_id = f"{lid}_{form.id.data}"
+        task = DbTask(id=full_task_id, league_id=lid)
+        # Populate ALL fields from the form
+        form.populate_obj(task) # Populates matching attributes
+        task.id=full_task_id # Ensure ID is set correctly after populate
+        task.league_id=lid  # Ensure league_id is set correctly
 
-    return render_template("admin/task_form.html",
-                           league=league,
-                           form=form,
-                           mode="new")
+        with SessionLocal() as db:
+            if db.get(DbTask, full_task_id):
+                flash(f"Task with ID '{form.id.data}' already exists for this league.", "error")
+                league_for_template = get_league(lid)
+                return render_template("admin/task_form.html", league=league_for_template, form=form, mode="new")
+            db.add(task)
+            try:
+                db.commit()
+                flash(f"Task '{task.title}' created successfully.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error creating task: {e}", "error")
+                print(f"Database Commit Error: {e}")
+                league_for_template = get_league(lid)
+                return render_template("admin/task_form.html", league=league_for_template, form=form, mode="new")
+        return redirect(url_for("admin.tasks", lid=lid))
+    else:
+        if request.method == 'POST':
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
+    return render_template("admin/task_form.html", league=league, form=form, mode="new")
+
 
 @admin.route("/leagues/<lid>/tasks/<tid>/edit", methods=["GET","POST"])
+@login_required
+@admin_required # Only admins can edit tasks
 def task_edit(lid, tid):
+    # ... (keep existing code from previous version) ...
     with SessionLocal() as db:
-        task = db.get(DBTask, tid) or abort(404)
+        task = db.get(DbTask, tid)
+        if not task or task.league_id != lid:
+             flash("Task not found for this league.", "error")
+             abort(404)
         form = TaskForm(obj=task)
+        form.id.render_kw = {'readonly': True}
+        short_task_id = tid.split(f"{lid}_", 1)[-1] if tid.startswith(f"{lid}_") else tid
         if form.validate_on_submit():
+            # Store original ID before populating
+            original_id = task.id
             form.populate_obj(task)
-            db.commit()
+            # Ensure ID and league_id are not changed
+            task.id = original_id
+            task.league_id = lid
+            try:
+                db.commit()
+                flash(f"Task '{task.title}' updated successfully.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error updating task: {e}", "error")
+                print(f"Database Commit Error: {e}")
             return redirect(url_for(".tasks", lid=lid))
+        elif request.method == 'POST':
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Error in {getattr(form, field).label.text}: {error}", "error")
     league = get_league(lid)
-    return render_template("admin/task_form.html", league=league, form=form, mode="edit")
+    if not league: abort(404)
+    return render_template("admin/task_form.html", league=league, form=form, mode="edit", task_id_display=short_task_id)
+
 
 @admin.route("/leagues/<lid>/tasks/<tid>/delete", methods=["POST"])
+@login_required
+@admin_required # Only admins can delete tasks
 def task_delete(lid, tid):
+    # ... (keep existing code) ...
     with SessionLocal() as db:
-        task = db.get(DBTask, tid) or abort(404)
-        db.delete(task); db.commit()
+        task = db.get(DbTask, tid)
+        if task and task.league_id == lid:
+            try:
+                db.delete(task)
+                db.commit()
+                flash(f"Task '{task.title}' deleted successfully.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error deleting task: {e}", "error")
+                print(f"Database Commit Error: {e}")
+        else:
+            flash("Task not found or does not belong to this league.", "error")
     return redirect(url_for(".tasks", lid=lid))
-
-@admin.route("/leagues/<lid>/import_demo", methods=["POST"])
-def import_demo_tasks(lid):
-    league = get_league(lid) or abort(404)
-
-    pre_demo = [
-        ("review_reports","Review previous year's summary reports","1 week before registration opens",
-        "Locate last year's summary reports in the shared drive, read key findings, and write down 2-3 improvement goals."),
-        ("email_officials","Email past officials and new applicants","4 weeks before officials training",
-        "Send the invitation email template to returning & prospective officials."),
-        ("hire_officials","Hire desired officials","4 weeks before first games",
-        "Confirm hiring decisions in IMLeagues and send offer letters."),
-        ("create_goals","Create goals on new summary report","3 weeks before event",
-        "Open blank summary report and fill measurable goals."),
-        ("schedule_pac","Communicate with instructor & schedule PAC appearance","3 weeks before reg deadline",
-        "Email PAC213 instructor to book 10-minute class pitch."),
-        ("check_facilities","Coordinate with facilities/ops staff","2 weeks before reg deadline",
-        "Verify field lining and lights schedule."),
-        ("mazevo_reserve","Reserve space in Mazevo","2 weeks before officials training",
-        "Ensure every match slot in Mazevo matches IMLeagues."),
-        ("confirm_clinic","Confirm officials clinic details","2 weeks before officials training",
-        "Verify room booking and remind presenters."),
-        ("setup_zoom","Set up Zoom manager's meeting link","2 weeks before reg deadline",
-        "Create Zoom and paste link in IMLeagues."),
-        ("equipment","Ensure we have all equipment","2 weeks before games start",
-        "Inventory balls, cones; raise PO if needed."),
-        ("rules_review","Review & upload rules","1 week before officials training",
-        "Update rule tweaks, upload PDF to IMLeagues."),
-        ("attend_pac","Attend and present to PAC class(es)","End of week 1",
-        "Deliver 10-minute presentation & collect interest list."),
-        ("schedule_spas","Schedule SPAs","End of week 1","Create shifts in WhenToWork."),
-        ("message_past","Message past participants","End of week 1","Bulk-message last year's teams."),
-        ("managers_ppt","Create manager's meeting powerpoint","Friday of week 1",
-        "Duplicate last term's deck, update dates."),
-        ("reminder_managers","Send reminder of manager's meeting","Day before meeting",
-        "Send one-click email in IMLeagues."),
-        ("club_check","Run Sport Club participation check","Registration deadline",
-        "Use club eligibility checker tool."),
-        ("meet_spas","Meet SPAs at fields/courts","Registration deadline",
-        "Walk SPAs through setup and teardown."),
-    ]
-
-    post_demo = [
-        ("shirts_photos","Distribute champ shirts & take photos","After final","Hand shirts, shoot photo, upload to Flickr."),
-        ("equip_needs","Notify Macer/Tony of equipment needs","After final","Email replacement list."),
-        ("post_photos","Post playoff & champ photos on Flickr","After final","Tag and add to album."),
-        ("add_marketing","Add champ photos to Marketing folder","After final","Copy originals to Marketing/Champions/<term>."),
-        ("update_tracker","Update Champion T-Shirt Tracker","After final","Update Google Sheet quantities."),
-        ("collect_jerseys","Collect officials' jerseys","After final","Check-in list; invoice missing jerseys."),
-        ("summary_report","Complete the summary report","After final","Finish summary and share with supervisor."),
-    ]
-
-    with SessionLocal() as db:
-        for _id, title, due, instr in [*pre_demo, *post_demo]:
-            if db.get(DBTask, _id):        # skip if already exists
-                continue
-            db.add(DBTask(id=_id, league_id=lid, title=title,
-                        category="Pre-League" if (_id in dict(pre_demo)) else "Post-League",
-                        due=None,
-                        order=_id,
-                        instructions=f"(Due {due}) — {instr}"))
-        db.commit()
-    return redirect(url_for("admin.tasks", lid=lid))
 

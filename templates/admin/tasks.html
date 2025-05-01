@@ -1,31 +1,72 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {# Assumes base.html uses Tailwind #}
 {% block title %}Tasks - {{ league.name }}{% endblock %}
 
 {% block content %}
-<h1>Tasks - {{ league.name }}</h1>
-<a href="{{ url_for('admin.task_new', lid=league.id) }}" class="btn btn-sm btn-primary mb-2">New Task</a>
-<form action="{{ url_for('admin.import_demo_tasks', lid=league.id) }}" method="post" class="d-inline">
-  <button class="btn btn-sm btn-outline-secondary mb-2" onclick="return confirm('Import demo tasks?')">
-    Import Demo Tasks
-  </button>
-</form>
-<table class="table table-sm">
-  <tr><th>Order</th><th>ID</th><th>Title</th><th>Category</th><th>Due</th><th></th></tr>
-  {% for t in league.tasks %}
-    <tr>
-      <td>{{ t.order }}</td>
-      <td>{{ t.id }}</td>
-      <td>{{ t.title }}</td>
-      <td>{{ t.category }}</td>
-      <td>{{ t.due or "" }}</td>
-      <td>
-        <a href="{{ url_for('admin.task_edit', lid=league.id, tid=t.id) }}" class="btn btn-sm btn-secondary">Edit</a>
-        <form action="{{ url_for('admin.task_delete', lid=league.id, tid=t.id) }}" method="post" class="d-inline">
-          <button class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Del</button>
-        </form>
-      </td>
-    </tr>
-  {% endfor %}
-</table>
-<a href="{{ url_for('admin.leagues') }}" class="btn btn-secondary">Back to Leagues</a>
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">Manage Tasks</h1>
+    <p class="text-sm text-gray-600">For League: <span class="font-medium text-osu-orange">{{ league.name }}</span></p>
+  </div>
+  <a href="{{ url_for('admin.task_new', lid=league.id) }}" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-osu-orange hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+     <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+    </svg>
+    New Task
+  </a>
+</div>
+
+<div class="bg-white shadow overflow-hidden sm:rounded-lg border border-gray-200">
+   <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+          <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        {# Sort tasks by order, then title if order is missing/same #}
+        {% for t in league.tasks | sort(attribute='order') | sort(attribute='title') %}
+          <tr class="hover:bg-gray-50 transition duration-150 ease-in-out">
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ t.order }}</td>
+            {# Display the short task ID #}
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800"> {# Slightly darker text #}
+                {{ t.id.split(league.id + '_', 1)[-1] if t.id.startswith(league.id + '_') else t.id }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ t.title }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ t.category }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                {{ t.due.strftime('%Y-%m-%d') if t.due else "" }}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3"> {# Increased spacing #}
+               {# Edit Button #}
+              <a href="{{ url_for('admin.task_edit', lid=league.id, tid=t.id) }}" class="text-indigo-600 hover:text-indigo-900 hover:underline" title="Edit Task">Edit</a>
+              {# Delete Button Form #}
+              <form action="{{ url_for('admin.task_delete', lid=league.id, tid=t.id) }}" method="post" class="inline" onsubmit="return confirm('Are you sure you want to delete task \'{{ t.title }}\'?');">
+                <button type="submit" class="text-red-600 hover:text-red-900 hover:underline" title="Delete Task">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+            <tr>
+                <td colspan="6" class="text-center px-6 py-4 text-sm text-gray-500">
+                    No tasks found for this league. Click "New Task" to create one, or create the league from a template.
+                </td>
+            </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="mt-6">
+     <a href="{{ url_for('admin.leagues') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-osu-orange">
+        Back to Leagues
+      </a>
+</div>
 {% endblock %}
+

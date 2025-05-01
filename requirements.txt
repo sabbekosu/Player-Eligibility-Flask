@@ -9,3 +9,5 @@ gunicorn
 sqlalchemy
 pyinstaller
 flask-wtf
+Flask-Login
+Werkzeug

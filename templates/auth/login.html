@@ -1,0 +1,91 @@
+{% extends "base.html" %} {# Assumes base.html now includes Tailwind #}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="flex min-h-full items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="w-full max-w-md space-y-8">
+    <div>
+      {# Optional: Add a logo here if desired #}
+      {# <img class="mx-auto h-12 w-auto" src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=600" alt="Your Company"> #}
+      <h2 class="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900">
+        Sign in to IM Tools
+      </h2>
+    </div>
+
+    {# --- Flash Messages --- #}
+    {# Display only danger messages related to login failure #}
+    {% with messages = get_flashed_messages(category_filter=['danger']) %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="rounded-md bg-red-50 p-4 border border-red-300 shadow-sm">
+                  <div class="flex">
+                    <div class="flex-shrink-0">
+                      <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                    <div class="ml-3">
+                      <p class="text-sm font-medium text-red-800">{{ message }}</p>
+                    </div>
+                  </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {# --- End Flash Messages --- #}
+
+
+    <form class="mt-8 space-y-6" method="POST" action="{{ url_for('auth.login') }}">
+      {{ form.hidden_tag() }} {# Required for CSRF protection if enabled #}
+      <input type="hidden" name="remember" value="true"> {# Optional: Add remember me functionality later #}
+      <div class="rounded-md shadow-sm -space-y-px"> {# Group inputs visually #}
+        {# --- Username Field --- #}
+        <div>
+          <label for="username" class="sr-only">{{ form.username.label.text }}</label> {# Screenreader only label #}
+          {{ form.username(id="username", type="text", autocomplete="username", required=True,
+                           placeholder="Username",
+                           class="relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-osu-orange focus:outline-none focus:ring-osu-orange" + (" border-red-500" if form.username.errors else ""))
+          }}
+        </div>
+        {# --- Password Field --- #}
+        <div>
+          <label for="password" class="sr-only">{{ form.password.label.text }}</label>
+          {{ form.password(id="password", type="password", autocomplete="current-password", required=True,
+                           placeholder="Password",
+                           class="relative block w-full appearance-none rounded-none rounded-b-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-osu-orange focus:outline-none focus:ring-osu-orange" + (" border-red-500" if form.password.errors else ""))
+           }}
+        </div>
+      </div>
+      {# Display errors below the fields #}
+       {% if form.username.errors %}
+          <p class="mt-2 text-sm text-red-600">
+              Username: {% for error in form.username.errors %} {{ error }} {% endfor %}
+          </p>
+       {% endif %}
+       {% if form.password.errors %}
+          <p class="mt-2 text-sm text-red-600">
+              Password: {% for error in form.password.errors %} {{ error }} {% endfor %}
+          </p>
+       {% endif %}
+
+
+      {# Optional: Add Remember me checkbox and Forgot password link here if needed #}
+      {# <div class="flex items-center justify-between"> ... </div> #}
+
+      {# --- Submit Button --- #}
+      <div>
+        {{ form.submit(value="Sign in",
+                       class="group relative flex w-full justify-center rounded-md border border-transparent bg-osu-orange py-2 px-4 text-sm font-medium text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-osu-orange focus:ring-offset-2 cursor-pointer")
+        }}
+      </div>
+    </form>
+
+     {# Optional: Link to registration #}
+     {# <p class="mt-10 text-center text-sm text-gray-500">
+      Not a member?
+      <a href="{{ url_for('auth.register') }}" class="font-medium text-osu-orange hover:text-orange-700">Register here</a>
+    </p> #}
+
+  </div>
+</div>
+{% endblock %}
