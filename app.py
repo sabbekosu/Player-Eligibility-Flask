@@ -22,6 +22,7 @@ from pdfminer.high_level import extract_text_to_fp
 from league_checklist import bp as leagues_bp
 from admin import admin as admin_bp
 from auth import auth as auth_bp # Import the new auth blueprint
+from sports_clubs import sc_bp as sports_clubs_bp
 
 # Import models (especially User for user_loader) and SessionLocal
 from db import SessionLocal
@@ -33,28 +34,33 @@ from models import User
 BASE_DIR   = Path(__file__).resolve().parent
 ROSTER_DIR = BASE_DIR / "club_rosters"
 ROSTER_META = ROSTER_DIR / "rosters.json"
+UPLOAD_FOLDER = BASE_DIR / 'uploads' # Define upload folder path
+
 ROSTER_DIR.mkdir(exist_ok=True)
+UPLOAD_FOLDER.mkdir(exist_ok=True) # Create uploads folder if it doesn't exist
 
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
 app.secret_key = "replace-this-with-a-real-secret-key" # IMPORTANT: Change for production
+# Configure the upload folder
+app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)
+
 
 # Register Blueprints
 app.register_blueprint(leagues_bp)
 app.register_blueprint(admin_bp)
-app.register_blueprint(auth_bp) # Register the auth blueprint
+app.register_blueprint(auth_bp)
+app.register_blueprint(sports_clubs_bp) # Register the sports_clubs blueprint
 
-# --- Flask-Login Setup ---
+# --- Flask-Login Setup (Keep existing) ---
 login_manager = LoginManager()
 login_manager.init_app(app)
-# Redirect users to the login page if they try to access protected pages
 login_manager.login_view = 'auth.login'
-login_manager.login_message_category = 'info' # Bootstrap category for flash message
+login_manager.login_message_category = 'info'
 
 @login_manager.user_loader
 def load_user(user_id):
     """Flask-Login hook to load a user object from the database."""
     with SessionLocal() as db:
-        # User ID is stored as an integer in the session
         return db.query(User).get(int(user_id))
 # -------------------------
 

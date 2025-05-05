@@ -71,10 +71,38 @@
             <a href="{{ url_for('eligibility') }}" class="text-white hover:text-osu-orange px-3 py-2 rounded-md text-sm font-medium {% if request.endpoint == 'eligibility' %}bg-gray-700{% endif %}">Eligibility Checker</a>
             {% if current_user.is_authenticated %}
               <a href="{{ url_for('leagues.league_list') }}" class="text-white hover:text-osu-orange px-3 py-2 rounded-md text-sm font-medium {% if request.blueprint == 'leagues' %}bg-gray-700{% endif %}">Leagues</a>
+              {# Admin Dropdown Menu #}
               {% if current_user.role == 'admin' %}
-                <a href="{{ url_for('admin.leagues') }}" class="text-white hover:text-osu-orange px-3 py-2 rounded-md text-sm font-medium {% if request.blueprint == 'admin' %}bg-gray-700{% endif %}">Admin</a>
-              {% endif %}
-            {% endif %}
+                <div class="relative" x-data="{ open: false }" @click.away="open = false">
+                  <button @click="open = !open" type="button" class="text-white hover:text-osu-orange px-3 py-2 rounded-md text-sm font-medium inline-flex items-center {% if request.blueprint == 'admin' %}bg-gray-700{% endif %}" id="admin-menu-button" aria-expanded="false" aria-haspopup="true">
+                    <span>Admin</span>
+                    <svg class="ml-1 -mr-1 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                  {# Dropdown panel #}
+                   <div x-show="open"
+                       x-transition:enter="transition ease-out duration-100"
+                       x-transition:enter-start="transform opacity-0 scale-95"
+                       x-transition:enter-end="transform opacity-100 scale-100"
+                       x-transition:leave="transition ease-in duration-75"
+                       x-transition:leave-start="transform opacity-100 scale-100"
+                       x-transition:leave-end="transform opacity-0 scale-95"
+                       class="absolute left-0 z-10 mt-2 w-56 origin-top-left rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+                       role="menu" aria-orientation="vertical" aria-labelledby="admin-menu-button" tabindex="-1"
+                       style="display: none;" {# Hide initially, Alpine handles toggle #}
+                       @click="open = false" {# Close when clicking inside #}
+                       >
+                    <div class="py-1" role="none">
+                      <a href="{{ url_for('admin.leagues') }}" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100 {% if request.endpoint == 'admin.leagues' or request.endpoint == 'admin.tasks' or request.endpoint == 'admin.league_edit' or request.endpoint == 'admin.task_edit' %}bg-gray-100{% endif %}" role="menuitem" tabindex="-1" id="admin-menu-item-0">Manage Leagues/Tasks</a>
+                      {# *** NEW LINK *** #}
+                      <a href="{{ url_for('admin.clubs') }}" class="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100 {% if request.endpoint == 'admin.clubs' or request.endpoint == 'admin.club_edit' %}bg-gray-100{% endif %}" role="menuitem" tabindex="-1" id="admin-menu-item-1">Manage Clubs</a>
+                      {# Add other admin links here later #}
+                    </div>
+                  </div>
+                </div>
+              {% endif %} {# End admin role check #}
+            {% endif %} {# End authenticated check #}
           </div>
         </div>
       </div>
@@ -86,7 +114,6 @@
             {# User Dropdown - Custom JS Toggle #}
             <div class="ml-3 relative">
               <div>
-                {# REMOVED data-bs-toggle, ADDED id #}
                 <button type="button" class="max-w-xs bg-osu-black rounded-full flex items-center text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-osu-black focus:ring-white" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
                   <span class="sr-only">Open user menu</span>
                   <span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-gray-600">
@@ -98,7 +125,7 @@
                   </svg>
                 </button>
               </div>
-              {# Dropdown menu items - ADDED id, hidden, transition classes #}
+              {# Dropdown menu items #}
               <ul id="user-menu-dropdown"
                   class="hidden absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none transition ease-out duration-100 transform opacity-0 scale-95"
                   role="menu" aria-orientation="vertical" aria-labelledby="user-menu-button" tabindex="-1">
@@ -138,8 +165,11 @@
       <a href="{{ url_for('eligibility') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium {% if request.endpoint == 'eligibility' %}bg-gray-700 text-white{% endif %}">Eligibility Checker</a>
       {% if current_user.is_authenticated %}
         <a href="{{ url_for('leagues.league_list') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium {% if request.blueprint == 'leagues' %}bg-gray-700 text-white{% endif %}">Leagues</a>
+        {# Admin Links for Mobile #}
         {% if current_user.role == 'admin' %}
-          <a href="{{ url_for('admin.leagues') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium {% if request.blueprint == 'admin' %}bg-gray-700 text-white{% endif %}">Admin</a>
+          <a href="{{ url_for('admin.leagues') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium {% if request.blueprint == 'admin' and request.endpoint != 'admin.clubs' %}bg-gray-700 text-white{% endif %}">Admin: Leagues</a>
+           {# *** NEW LINK *** #}
+          <a href="{{ url_for('admin.clubs') }}" class="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium {% if request.endpoint == 'admin.clubs' %}bg-gray-700 text-white{% endif %}">Admin: Clubs</a>
         {% endif %}
       {% endif %}
     </div>
@@ -183,16 +213,7 @@
           {% set alert_color = 'blue' if category == 'info' else ('green' if category == 'success' else ('yellow' if category == 'warning' else ('red' if category == 'danger' else 'gray'))) %}
           <div class="relative rounded-md border border-{{ alert_color }}-300 bg-{{ alert_color }}-50 p-4 shadow-md" role="alert">
             <div class="flex">
-                <div class="flex-shrink-0">
-                     {# Simple Icon Example #}
-                     {% if category == 'success' %}
-                        <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-                     {% elif category == 'danger' %}
-                         <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
-                     {% else %}
-                         <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
-                     {% endif %}
-                </div>
+                <div class="flex-shrink-0"> {# Icon #} </div>
                 <div class="ml-3">
                     <p class="text-sm font-medium text-{{ alert_color }}-800">{{ message }}</p>
                 </div>
@@ -218,55 +239,21 @@
 </main>
 
 {# Bootstrap 5 JS Bundle - Keep for Mobile Navbar Toggler FOR NOW #}
-{# We might remove this later if we replace all BS JS components #}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+{# *** ADD Alpine.js for dropdowns *** #}
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
 
 {# Add custom JS block #}
 {% block scripts %}
 <script>
   // --- User Menu Dropdown Toggle ---
-  const userMenuButton = document.getElementById('user-menu-button');
-  const userMenuDropdown = document.getElementById('user-menu-dropdown');
-
-  if (userMenuButton && userMenuDropdown) {
-    userMenuButton.addEventListener('click', (event) => {
-      // Prevent click event from bubbling up to the document listener immediately
-      event.stopPropagation();
-      const isExpanded = userMenuButton.getAttribute('aria-expanded') === 'true';
-      userMenuButton.setAttribute('aria-expanded', !isExpanded);
-      // Toggle visibility and animation classes
-      userMenuDropdown.classList.toggle('hidden');
-      // Use requestAnimationFrame to ensure the transition happens after 'hidden' is removed
-      requestAnimationFrame(() => {
-        userMenuDropdown.classList.toggle('opacity-0');
-        userMenuDropdown.classList.toggle('scale-95');
-        userMenuDropdown.classList.toggle('opacity-100');
-        userMenuDropdown.classList.toggle('scale-100');
-      });
-    });
-
-    // Close dropdown if clicking outside
-    document.addEventListener('click', (event) => {
-      // Check if the dropdown is currently visible and the click was outside
-      if (userMenuButton.getAttribute('aria-expanded') === 'true' &&
-          !userMenuButton.contains(event.target) &&
-          !userMenuDropdown.contains(event.target)) {
-
-          userMenuButton.setAttribute('aria-expanded', 'false');
-          // Start the closing transition
-          userMenuDropdown.classList.remove('opacity-100', 'scale-100');
-          userMenuDropdown.classList.add('opacity-0', 'scale-95');
-          // Hide the element after the transition duration (100ms)
-          setTimeout(() => {
-              userMenuDropdown.classList.add('hidden');
-          }, 100); // Match the duration-100 class
-      }
-    });
-  }
+  // This is now handled by Alpine.js added above, so the custom JS can be removed
+  // const userMenuButton = document.getElementById('user-menu-button');
+  // const userMenuDropdown = document.getElementById('user-menu-dropdown');
+  // if (userMenuButton && userMenuDropdown) { ... }
 
   // --- Mobile Menu Toggle (Still relies on Bootstrap JS for now) ---
-  // If we remove Bootstrap JS later, we'd add similar JS for the mobile menu toggle here.
-
 </script>
 {% endblock %}
 

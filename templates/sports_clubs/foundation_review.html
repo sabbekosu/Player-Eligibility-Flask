@@ -1,0 +1,93 @@
+{# templates/sports_clubs/foundation_review.html #}
+{% extends "base.html" %}
+{% block title %}Review Foundation Transactions{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  {# --- Page Header --- #}
+  <div>
+    <h1 class="text-2xl font-semibold text-gray-900">Review Unmatched Foundation Transactions</h1>
+    <p class="mt-1 text-sm text-gray-600">
+      Assign the following transactions to the correct Sports Club. Transactions marked as "Missing From Donor Report" could not be found in the uploaded Donor Report based on the Journal Reference number.
+    </p>
+  </div>
+
+  {# --- Flash Messages --- #}
+  {# Handled in base.html #}
+
+  {# --- Review Items --- #}
+  {% if transactions %}
+    <div class="space-y-8">
+      {% for transaction in transactions %}
+      <form method="post" action="{{ url_for('sports_clubs.foundation_review') }}" class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
+        {# Hidden input for the transaction ID #}
+        <input type="hidden" name="transaction_id" value="{{ transaction.id }}">
+
+        <div class="px-4 py-5 sm:p-6">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Journal Ref: {{ transaction.journal_ref }}
+          </h3>
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm text-gray-600">
+            {# Transaction Details Column 1 #}
+            <div class="space-y-1">
+              <div><strong>Date:</strong> {{ transaction.transaction_date.strftime('%Y-%m-%d') if transaction.transaction_date else 'N/A' }}</div>
+              <div><strong>DRS Description:</strong> {{ transaction.donor_description | default('N/A', true) }}</div>
+              {% if transaction.original_designation == 'Missing From Donor Report' %}
+                <div class="text-red-600"><strong>Original Designation:</strong> {{ transaction.original_designation }}</div>
+              {% else %}
+                <div><strong>Original Designation:</strong> {{ transaction.original_designation | default('N/A', true) }}</div>
+              {% endif %}
+            </div>
+            {# Transaction Details Column 2 #}
+            <div class="space-y-1">
+                <div><strong>Contribution:</strong> ${{ "%.2f"|format(transaction.gross_amount|float) }}</div>
+                <div><strong>Fees/Charges:</strong> ${{ "%.2f"|format(transaction.fees_total|float) }}</div>
+                <div><strong>Net Amount:</strong> ${{ "%.2f"|format(transaction.net_amount|float) }}</div>
+            </div>
+             {# Transaction Details Column 3 (Donor Info) #}
+            <div class="space-y-1">
+                {% if transaction.original_designation == 'Missing From Donor Report' %}
+                    <div><strong>Address:</strong> N/A</div>
+                    <div><strong>Email:</strong> N/A</div>
+                {% else %}
+                    <div><strong>Address:</strong> {{ transaction.donor_city | default('N/A', true) }}, {{ transaction.donor_state | default('N/A', true) }} {{ transaction.donor_zip | default('N/A', true) }}</div>
+                    <div><strong>Email:</strong> {{ transaction.donor_email | default('N/A', true) }}</div>
+                {% endif %}
+            </div>
+          </div>
+
+          {# Assignment Dropdown and Button #}
+          <div class="mt-5 flex items-center space-x-4">
+            <label for="club_id_{{ transaction.id }}" class="block text-sm font-medium text-gray-700">Assign to Club:</label>
+            <select id="club_id_{{ transaction.id }}" name="club_id" required
+                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+              <option value="" disabled selected>Select a Club...</option>
+              {% for club in clubs %}
+              <option value="{{ club.id }}">{{ club.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              Assign
+            </button>
+          </div>
+        </div>
+      </form>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="bg-white shadow sm:rounded-lg border border-gray-200 px-4 py-5 sm:p-6">
+      <p class="text-center text-gray-500">No transactions currently need review.</p>
+    </div>
+  {% endif %}
+
+   {# Optional: Add back button or link #}
+   <div class="mt-6">
+       <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
+           &larr; Back to Reconciliation Upload
+       </a>
+   </div>
+
+</div>
+{% endblock %}
+

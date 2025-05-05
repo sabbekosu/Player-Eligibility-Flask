@@ -76,14 +76,35 @@
            <h3 class="text-lg font-medium text-gray-900 group-hover:text-osu-orange">Admin Panel</h3>
          </div>
          <p class="text-sm text-gray-500">
-           Manage league & event templates, create/edit leagues, manage tasks, and users.
+           Manage IM leagues, task templates, and clubs.
          </p>
        </div>
        <div class="mt-4 text-sm font-medium text-osu-orange group-hover:underline">
         Go to Admin &rarr;
       </div>
     </a>
-    {% endif %}
+
+    {# *** NEW CARD: Foundation Reconciliation - Only show if user is admin *** #}
+    <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}" class="group col-span-1 flex flex-col justify-between rounded-lg bg-white p-6 shadow-md border border-gray-200 hover:shadow-lg hover:border-osu-orange transition duration-150 ease-in-out">
+       <div>
+        <div class="flex items-center space-x-3 mb-3">
+           {# Icon #}
+           <span class="rounded-lg bg-yellow-50 p-2 border border-yellow-200">
+                <svg class="h-6 w-6 text-yellow-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 11.21 12.75 10.5 12 10.5s-1.536.71-2.121 1.256c-1.171.879-1.171 2.303 0 3.182S10.829 16.182 12 15.318M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+           </span>
+           <h3 class="text-lg font-medium text-gray-900 group-hover:text-osu-orange">Club Foundation Tool</h3>
+         </div>
+         <p class="text-sm text-gray-500">
+           Upload and reconcile foundation donation reports for sports clubs.
+         </p>
+       </div>
+       <div class="mt-4 text-sm font-medium text-osu-orange group-hover:underline">
+        Reconcile Reports &rarr;
+      </div>
+    </a>
+    {% endif %} {# End admin role check #}
 
     {# Placeholder for future dashboard elements #}
     {# <div class="col-span-1 sm:col-span-2 lg:col-span-3 bg-gray-100 p-6 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
