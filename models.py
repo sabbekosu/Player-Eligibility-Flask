@@ -165,12 +165,10 @@ class Progress(Base):
 class Club(Base):
     """Represents an official Sports Club."""
     __tablename__ = "clubs"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True) # Ensure primary key is defined
     name = Column(String(150), unique=True, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
-
-    # Relationship to transactions allocated to this club
-    foundation_transactions = relationship("FoundationTransaction", back_populates="club")
+    foundation_transactions = relationship("FoundationTransaction", back_populates="club") # Define relationship
 
     def __repr__(self):
         return f"<Club {self.id}: {self.name}{'' if self.is_active else ' (Inactive)'}>"
@@ -181,18 +179,18 @@ class FoundationTransaction(Base):
     id = Column(Integer, primary_key=True)
     transaction_date = Column(Date, nullable=False, index=True)
     journal_ref = Column(String(100), unique=True, nullable=False, index=True) # Unique identifier
-    donor_description = Column(Text, nullable=True) # From DRS Report 'Description'
-    original_designation = Column(Text, nullable=True) # From Donor Report 'Designation Desc'
+    donor_description = Column(Text, nullable=True) # From DRS Report 'Description' or cleaned donor name
+    original_designation = Column(Text, nullable=True) # From Donor Report 'Designation Desc' (Column I)
 
     # Using Numeric for currency is recommended for precision
-    gross_amount = Column(Numeric(10, 2), nullable=False, default=0.00) # Deduced income amount
-    fees_total = Column(Numeric(10, 2), nullable=False, default=0.00) # Sum of all fees
+    gross_amount = Column(Numeric(10, 2), nullable=False, default=0.00) # Deduced income amount (always positive)
+    fees_total = Column(Numeric(10, 2), nullable=False, default=0.00) # Sum of all fees/charges (always positive)
     net_amount = Column(Numeric(10, 2), nullable=False, default=0.00) # gross_amount - fees_total
 
     # Link to the assigned club (can be null if unallocated/needs review initially)
     club_id = Column(Integer, ForeignKey('clubs.id'), nullable=True, index=True)
-    club = relationship("Club", back_populates="foundation_transactions")
-    # Store the name used at the time of reconciliation for easier export
+    club = relationship("Club", back_populates="foundation_transactions") # Relationship defined in Club model
+    # Store the name used at the time of reconciliation for easier export/display
     assigned_club_name = Column(String(150), nullable=True)
 
     # Status tracking
@@ -201,15 +199,22 @@ class FoundationTransaction(Base):
     STATUS_IGNORED = 'ignored' # Maybe for transactions that shouldn't be included
     status = Column(String(50), nullable=False, default=STATUS_NEEDS_REVIEW, index=True)
 
+    # --- NEW Donor Info Fields ---
+    donor_city = Column(String(100), nullable=True)
+    donor_state = Column(String(10), nullable=True)
+    donor_zip = Column(String(20), nullable=True)
+    donor_email = Column(String(255), nullable=True)
+    # --- End NEW Fields ---
+
     # Optional: Track which upload batch this came from
-    # upload_batch_id = Column(String(100), index=True)
+    upload_batch_id = Column(String(100), index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         return f"<FoundationTransaction {self.id} ({self.transaction_date}) JnlRef:{self.journal_ref} Net:{self.net_amount} Club:{self.assigned_club_name or self.club_id} Status:{self.status}>"
 
-# --- Create Tables ---
+
 try:
     print("Checking/creating database tables...")
     Base.metadata.create_all(ENG)

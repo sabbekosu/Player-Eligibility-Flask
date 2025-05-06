@@ -40,6 +40,7 @@ ROSTER_DIR.mkdir(exist_ok=True)
 UPLOAD_FOLDER.mkdir(exist_ok=True) # Create uploads folder if it doesn't exist
 
 app = Flask(__name__, template_folder=str(BASE_DIR / "templates"))
+app.temp_file_buffers = {}
 app.secret_key = "replace-this-with-a-real-secret-key" # IMPORTANT: Change for production
 # Configure the upload folder
 app.config['UPLOAD_FOLDER'] = str(UPLOAD_FOLDER)

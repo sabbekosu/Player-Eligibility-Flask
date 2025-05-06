@@ -1,55 +1,115 @@
 # seed_clubs.py
 from db import SessionLocal
 from models import Club
+from sqlalchemy.exc import IntegrityError
 
-# List of clubs extracted from index.html JavaScript
-# Exclude 'Other' as it's not a real club for allocation
-CLUB_NAMES = [
-    "Archery Club", "Badminton Club", "Baseball Club", "Cycling Club",
-    "Disc Golf Club", "Dodgeball Club", "Equestrain Dressage Club",
-    "Equestrian Event", "Equestrian Hunter-Jumper", "Equestrian Polo Club",
-    "Fishing Club", "Gymnastics Club", "Indoor Rock Climbing",
-    "Intercollegiate Horse Show Association", # Note: Typo 'Assosiation' kept if that's the official name used
-    "Judo Club", "Karate Club", "Kendo Club", "Marksmanship Club",
-    "Men's Lacrosse Club", "Men's Rugby Club", "Men's Soccer Club",
-    "Men's Ultimate Disc Club", "Men's Volleyball Club", "Men's Water Polo Club",
-    "Pistol Club", "Racquetball Club", "Rifle Club", "Running Club",
-    "Sailing Club", "Stock Horse Club", "Swim Club", "Table Tennis Club",
-    "Tennis Club", "Triathlon Club", "Women's Lacrosse Club",
-    "Women's Rugby Club", "Women's Soccer Club", "Women's Ultimate Disc Club",
-    "Women's Volleyball Club", "Women's Water Polo Club"
+# Define the list of clubs with their active status
+# True = Active, False = Inactive
+clubs_to_seed = [
+    # --- Active Clubs (Based on user list) ---
+    {"name": "Archery Club", "is_active": True},
+    {"name": "Badminton Club", "is_active": True}, # Added
+    {"name": "Baseball Club", "is_active": True},
+    {"name": "Cycling Club", "is_active": True},
+    {"name": "Disc Golf Club", "is_active": True}, # Renamed
+    {"name": "Dodgeball Club", "is_active": True}, # Renamed
+    {"name": "Equestrain Dressage Club", "is_active": True}, # Renamed (Note: Typo in 'Equestrian'?)
+    {"name": "Equestrian Event", "is_active": True}, # Renamed
+    {"name": "Equestrian Hunter-Jumper", "is_active": True}, # Renamed
+    {"name": "Equestrian Polo Club", "is_active": True}, # Renamed
+    {"name": "Fishing Club", "is_active": True}, # Renamed (was Bass Fishing)
+    {"name": "Gymnastics Club", "is_active": True},
+    {"name": "Indoor Rock Climbing", "is_active": True},
+    {"name": "Intercollegiate Horse Show Association", "is_active": True}, # Renamed (was IHSA Equestrian)
+    {"name": "Judo Club", "is_active": True},
+    {"name": "Karate Club", "is_active": True}, # Added
+    {"name": "Kendo Club", "is_active": True}, # Renamed
+    {"name": "Marksmanship Club", "is_active": True}, # Added
+    {"name": "Men's Lacrosse Club", "is_active": True}, # Renamed
+    {"name": "Men's Rugby Club", "is_active": True}, # Renamed
+    {"name": "Men's Soccer Club", "is_active": True}, # Renamed
+    {"name": "Men's Ultimate Disc Club", "is_active": True},
+    {"name": "Men's Volleyball Club", "is_active": True}, # Renamed
+    {"name": "Men's Water Polo Club", "is_active": True},
+    {"name": "Pistol Club", "is_active": True}, # Renamed
+    {"name": "Racquetball Club", "is_active": True},
+    {"name": "Rifle Club", "is_active": True},
+    {"name": "Running Club", "is_active": True},
+    {"name": "Sailing Club", "is_active": True},
+    {"name": "Sport Club Program", "is_active": True}, # Kept from previous update
+    {"name": "Stock Horse Club", "is_active": True}, # Renamed
+    {"name": "Swim Club", "is_active": True}, # Added
+    {"name": "Table Tennis Club", "is_active": True},
+    {"name": "Taekwondo Club", "is_active": True},
+    {"name": "Tennis Club", "is_active": True}, # Kept separate active one
+    {"name": "Triathlon Club", "is_active": True},
+    {"name": "Women's Lacrosse Club", "is_active": True}, # Renamed
+    {"name": "Women's Rugby Club", "is_active": True}, # Renamed
+    {"name": "Women's Soccer Club", "is_active": True}, # Renamed
+    {"name": "Women's Ultimate Disc Club", "is_active": True}, # Renamed (was Women's Ultimate)
+    {"name": "Women's Volleyball Club", "is_active": True}, # Renamed
+    {"name": "Women's Water Polo Club", "is_active": True}, # Renamed (was Women's Water Polo)
+
+    # --- Inactive Clubs (Based on previous request) ---
+    {"name": "Bowling Club", "is_active": False},
+    {"name": "Equestrian Drill", "is_active": False},
+    {"name": "OSU Tennis Club", "is_active": False}, # Kept separate inactive one
+
 ]
 
-def seed_initial_clubs():
-    """Adds the initial list of clubs to the database if they don't exist."""
-    print("Seeding initial sports clubs...")
-    added_count = 0
-    skipped_count = 0
+def seed_clubs():
+    """Seeds the database with the defined list of clubs and their active status."""
+    print("Seeding clubs...")
     with SessionLocal() as db:
-        existing_clubs = {c.name.lower() for c in db.query(Club.name).all()} # Get existing names (lowercase)
+        added_count = 0
+        updated_count = 0
+        skipped_count = 0
 
-        for name in CLUB_NAMES:
-            if name.lower() not in existing_clubs:
-                new_club = Club(name=name, is_active=True)
-                db.add(new_club)
-                print(f"  Adding: {name}")
-                added_count += 1
+        # Get existing clubs to check for updates
+        existing_clubs = {club.name: club for club in db.query(Club).all()}
+        # Keep track of names in the seed list to potentially deactivate others
+        seeded_club_names = {club_data["name"] for club_data in clubs_to_seed}
+
+        for club_data in clubs_to_seed:
+            club_name = club_data["name"]
+            is_active = club_data["is_active"]
+
+            if club_name in existing_clubs:
+                # Club exists, check if status needs updating
+                existing_club = existing_clubs[club_name]
+                if existing_club.is_active != is_active:
+                    print(f"  Updating status for '{club_name}' to {'Active' if is_active else 'Inactive'}")
+                    existing_club.is_active = is_active
+                    updated_count += 1
+                else:
+                    # print(f"  Skipping '{club_name}' - already exists with correct status.")
+                    skipped_count += 1
             else:
-                # print(f"  Skipping (already exists): {name}")
-                skipped_count += 1
+                # Club does not exist, add it
+                print(f"  Adding new club: '{club_name}' (Status: {'Active' if is_active else 'Inactive'})")
+                new_club = Club(name=club_name, is_active=is_active)
+                db.add(new_club)
+                added_count += 1
 
-        if added_count > 0:
-            try:
-                db.commit()
-                print(f"✅ Successfully added {added_count} new clubs.")
-            except Exception as e:
-                db.rollback()
-                print(f"❌ Error committing new clubs: {e}")
-        else:
-            print(f"✅ No new clubs to add ({skipped_count} already exist).")
+        # Optional: Deactivate clubs in DB that are NOT in the new seed list
+        # for existing_name, existing_club_obj in existing_clubs.items():
+        #     if existing_name not in seeded_club_names and existing_club_obj.is_active:
+        #         print(f"  Deactivating club '{existing_name}' (not in current seed list).")
+        #         existing_club_obj.is_active = False
+        #         updated_count += 1 # Count this as an update
+
+
+        try:
+            db.commit()
+            print(f"Club seeding complete. Added: {added_count}, Updated: {updated_count}, Skipped: {skipped_count}")
+        except IntegrityError as e:
+            db.rollback()
+            print(f"Error during club seeding commit: {e}")
+            print("Rolling back changes.")
+        except Exception as e:
+            db.rollback()
+            print(f"An unexpected error occurred during club seeding: {e}")
+            print("Rolling back changes.")
 
 if __name__ == "__main__":
-    # Ensure tables exist first (models.py should handle this on import)
-    # import models # noqa
-    seed_initial_clubs()
-
+    seed_clubs()

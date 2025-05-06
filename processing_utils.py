@@ -8,7 +8,6 @@ import traceback
 import openpyxl # For reading/writing xlsx
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, NamedStyle, numbers
-from openpyxl.worksheet.dimensions import ColumnDimension # For column widths
 from io import BytesIO
 from collections import defaultdict # For grouping transactions
 
@@ -68,6 +67,7 @@ def to_decimal(value, make_positive=False, default=Decimal('0.00')):
         cleaned_value = str(value).replace(',', '').replace('(', '-').replace(')', '')
         if not re.match(r'^-?\d+(\.\d+)?$', cleaned_value): return default
         decimal_val = Decimal(cleaned_value)
+        # --- Apply abs() if make_positive is True ---
         return abs(decimal_val) if make_positive else decimal_val
     except (InvalidOperation, ValueError, TypeError):
         return default
@@ -89,8 +89,7 @@ def normalize_text_for_matching(text):
     text = str(text).lower()
     # Remove common apostrophes and quotes
     text = text.replace("'", "").replace("’", "").replace('"', "").replace('`', '')
-    # Replace '+' with space, then replace other non-alphanumeric (excluding space) with space
-    text = text.replace("+", " ")
+    # Replace '+' and other non-alphanumeric (excluding space) with space
     text = re.sub(r'[^\w\s]+', ' ', text)
     # Replace multiple spaces with single space
     text = re.sub(r'\s+', ' ', text).strip()
@@ -108,58 +107,42 @@ def find_matching_club_sheet(designation_text, club_names_from_summary):
     if not normalized_designation: return None
 
     potential_matches = []
+    # Create a mapping of normalized club name back to original summary name
     normalized_to_original_club = {normalize_text_for_matching(c): c for c in club_names_from_summary}
 
     for normalized_club_name, original_club_name in normalized_to_original_club.items():
+        # Check if the normalized club name appears as a whole word/phrase in the normalized designation
+        # Using word boundaries (\b) to avoid partial matches like "men" in "women"
         pattern = r'\b' + re.escape(normalized_club_name) + r'\b'
         if re.search(pattern, normalized_designation):
+             # Use length of the *normalized club name* as match length
             potential_matches.append({'name': original_club_name, 'match_len': len(normalized_club_name)})
 
+    # Determine best match based on longest normalized name found
     if not potential_matches: return None
     elif len(potential_matches) == 1:
-        match = potential_matches[0]; return match['name']
+        match = potential_matches[0]
+        # print(f"[Debug Match] Single normalized match for '{designation_text}': {match['name']}")
+        return match['name']
     else:
         potential_matches.sort(key=lambda x: x['match_len'], reverse=True)
+        # Check if the longest match is unique
         if potential_matches[0]['match_len'] > potential_matches[1]['match_len']:
-            match = potential_matches[0]; return match['name']
+            match = potential_matches[0]
+            # print(f"[Debug Match] Resolved multiple normalized matches for '{designation_text}' to longest: {match['name']}")
+            return match['name']
         else: # Ambiguous length
+            # If ambiguous, check if the original designation *exactly* matches one of the normalized potential matches
+            # (after normalizing the designation itself)
             exact_match_original_names = [m['name'] for m in potential_matches if normalize_text_for_matching(m['name']) == normalized_designation]
-            if len(exact_match_original_names) == 1: return exact_match_original_names[0]
+            if len(exact_match_original_names) == 1:
+                print(f"[Debug Match] Resolved ambiguity for '{designation_text}' via exact normalized match: {exact_match_original_names[0]}")
+                return exact_match_original_names[0]
+
+            # If still ambiguous, return None
             ambiguous_names = [m['name'] for m in potential_matches if m['match_len'] == potential_matches[0]['match_len']]
             print(f"[Debug Match] Ambiguous normalized match for '{designation_text}'. Potential: {ambiguous_names}")
             return None
-
-# --- Helper to Adjust Column Widths ---
-def adjust_column_widths(worksheet):
-    """Adjusts column widths based on max content length."""
-    for col in worksheet.columns:
-        max_length = 0
-        column = col[0].column_letter # Get the column name
-        for cell in col:
-            try: # Necessary to avoid error on empty cells
-                if cell.value:
-                    # Compare length of formatted value vs raw value
-                    cell_length = 0
-                    if cell.number_format != 'General' and isinstance(cell.value, (int, float, Decimal, date, datetime)):
-                        # Use a reasonable estimate for formatted numbers/dates
-                        # Currency: ~ $ ###,###.## (12-15 chars)
-                        # Date: YYYY-MM-DD (10 chars)
-                        if 'yy' in cell.number_format: # Date format
-                            cell_length = 12
-                        elif '$' in cell.number_format or '#' in cell.number_format: # Currency/Number format
-                            cell_length = 15
-                        else:
-                            cell_length = len(str(cell.value))
-                    else:
-                         cell_length = len(str(cell.value))
-
-                    if cell_length > max_length:
-                        max_length = cell_length
-            except:
-                pass
-        # Add a little padding, minimum width of 10
-        adjusted_width = max(10, max_length + 2)
-        worksheet.column_dimensions[column].width = adjusted_width
 
 
 # --- NEW Main Processing Function ---
@@ -186,17 +169,22 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
         jrnl_to_designation = {} # Use normalized keys
         donor_dates = []
         try:
+            # Read Column B (Jrnl Ref), Column F (Date), Column I (Designation)
             donor_df = pd.read_excel(
                 donor_file_path,
                 sheet_name=DONOR_SHEET_NAME,
                 skiprows=DONOR_SKIP_ROWS,
                 header=None,
                 usecols=[DONOR_COL_IDX_JRNL_REF, DONOR_COL_IDX_DATE, DONOR_COL_IDX_DESIGNATION],
-                names=['RawJrnlRef', 'Date', 'DesignationText']
+                names=['RawJrnlRef', 'Date', 'DesignationText'] # Assign temporary names
             )
-            donor_df = donor_df.dropna(subset=['RawJrnlRef', 'DesignationText', 'Date'])
+            # --- Fix: Define DONOR_COL_DESG_INTERNAL if needed later, or just use 'DesignationText' ---
+            # DONOR_COL_DESG_INTERNAL = 'DesignationText' # Define it if used elsewhere
+
+            donor_df = donor_df.dropna(subset=['RawJrnlRef', 'DesignationText', 'Date']) # Need all three
             donor_df['DesignationText'] = donor_df['DesignationText'].astype(str).str.strip()
 
+            # Build map using normalized Jrnl Ref and collect dates
             for _, row in donor_df.iterrows():
                  raw_ref = row['RawJrnlRef']
                  designation_text = row['DesignationText']
@@ -205,13 +193,15 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
                      if normalized_ref not in jrnl_to_designation:
                         jrnl_to_designation[normalized_ref] = designation_text
 
+                 # Collect and validate dates
                  try:
+                     # --- More robust date parsing ---
                      donor_date = pd.to_datetime(row['Date'], errors='coerce').date()
-                     if pd.notna(donor_date):
+                     if pd.notna(donor_date): # Check if conversion was successful
                          donor_dates.append(donor_date)
-                     # else: print(f"  [Info] Donor Report: Could not parse date: {row['Date']} for JrnlRef {raw_ref}")
+                     # else: print(f"  [Info] Could not parse date: {row['Date']}") # Optional debug
                  except Exception as date_err:
-                     print(f"  [Warning] Donor Report: Error parsing date '{row['Date']}' for JrnlRef {raw_ref}: {date_err}")
+                     print(f"  [Warning] Error parsing date '{row['Date']}': {date_err}") # More specific error
 
             if donor_dates:
                 min_donor_date = min(donor_dates)
@@ -224,7 +214,7 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
 
         except Exception as e:
             print(f"[Warning] Error reading or parsing Donor Report: {e}. Designation lookup and date filtering might be incomplete.")
-            jrnl_to_designation = {}
+            jrnl_to_designation = {} # Ensure it's an empty dict
 
         # --- 2. Read Existing Summary File (Club List & Load Workbook) ---
         print(f"[Step 2] Reading existing Summary file: {summary_file_path}")
@@ -381,9 +371,13 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
                 # --- Apply Date Range Filter ---
                 if min_donor_date and max_donor_date:
                     if not (min_donor_date <= trans_date <= max_donor_date):
-                        # Debug Print for Date Filter
-                        # print(f"  Skipping DRS row {index} (Date: {trans_date}) - Outside Donor Range ({min_donor_date} to {max_donor_date})")
-                        results['skipped_date_range'] += 1
+                        # Check if already counted, only increment once per unique ref skipped
+                        temp_raw_ref = None
+                        match_ref_temp = re.search(r'[ -]?([a-zA-Z0-9]{3,})$', combined_desc_ref)
+                        if match_ref_temp: temp_raw_ref = match_ref_temp.group(1).strip()
+                        elif trans_num_raw and re.search(r'\d', trans_num_raw): temp_raw_ref = trans_num_raw
+                        if temp_raw_ref and normalize_jrnl_ref(temp_raw_ref) not in transactions_by_ref: # Check if ref already added
+                            results['skipped_date_range'] += 1
                         continue # Skip DRS rows outside the Donor report's date range
 
                 # Extract Journal Ref
@@ -474,7 +468,7 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
                 'Contribution Amount': total_contribution,
                 'Charges/Offset': total_fees,
                 'Net Amount': net_amount,
-                'Donation Use': original_designation or "" # Use original designation for Summary Individual
+                'Donation Use': matched_club_name or ""
             }
              # Prepare DB model data (using raw_jrnl_ref for storage)
             db_model_data = {
@@ -510,12 +504,14 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
             if jrnl_col_idx_target != -1:
                 for row_idx_check in range(2, ws_target.max_row + 1):
                     cell_val = ws_target.cell(row=row_idx_check, column=jrnl_col_idx_target).value
+                    # Normalize both refs before comparing
                     if normalize_jrnl_ref(cell_val) == normalized_jrnl_ref:
                         jrnl_exists_in_sheet = True; break
 
             if not jrnl_exists_in_sheet:
                 # Prepare row values based on target sheet headers
                 if target_sheet_name == NEEDS_REVIEW_SHEET_NAME:
+                    # Use specific headers for Needs Review, including Original Designation
                     new_row_values = [
                         excel_data_dict.get('Date'), excel_data_dict.get('Type'), excel_data_dict.get('Journal Ref'),
                         excel_data_dict.get('Donor/Description'), excel_data_dict.get('Contribution Amount'),
@@ -523,18 +519,15 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
                         original_designation # Add original designation here
                     ]
                 else:
-                    # Use standard club sheet headers, but override Donation Use
-                    excel_data_dict['Donation Use'] = matched_club_name or "" # Ensure club name is used here
+                    # Use standard club sheet headers
                     new_row_values = [excel_data_dict.get(h) for h in CLUB_SHEET_HEADERS]
-                    # Also add this row (with original designation) to the Summary Individual list
-                    summary_ind_dict = excel_data_dict.copy()
-                    summary_ind_dict['Donation Use'] = original_designation or "" # Use original designation for this sheet
-                    all_processed_transactions_for_summary_individual.append(summary_ind_dict)
+                    # Also add this row to the Summary Individual list
+                    all_processed_transactions_for_summary_individual.append(excel_data_dict)
 
 
                 ws_target.append(new_row_values)
                 new_row_num = ws_target.max_row
-                # Apply formatting
+                # Apply formatting (find columns by header text for robustness)
                 header_map_target = {str(cell.value).strip(): c_idx+1 for c_idx, cell in enumerate(ws_target[1]) if cell.value}
                 date_col_idx_fmt = header_map_target.get('Date')
                 contrib_col_idx_fmt = header_map_target.get('Contribution Amount')
@@ -565,7 +558,6 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
         # Sort transactions by date, then club name for the summary sheet
         all_processed_transactions_for_summary_individual.sort(key=lambda x: (x['Date'], x['Donation Use']))
         for trans_dict in all_processed_transactions_for_summary_individual:
-             # Use CLUB_SHEET_HEADERS; the 'Donation Use' key already holds original designation here
             new_row_values = [trans_dict.get(h) for h in CLUB_SHEET_HEADERS]
             ws_summary_individual.append(new_row_values)
             # Apply formatting
@@ -668,32 +660,22 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
 
             # print(f"  Updated Summary for '{club_name}': Rollover={rollover_val}, FY Contrib={fy_contrib_total}, FY Charges={fy_charges_total}, FY Expenses={expenses_val}, Remaining={current_remaining_val}")
 
-        # --- 8. Adjust Column Widths for all relevant sheets ---
-        print("[Step 8] Adjusting column widths...")
-        sheets_to_adjust = [SUMMARY_SHEET_NAME, SUMMARY_INDIVIDUAL_SHEET_NAME, NEEDS_REVIEW_SHEET_NAME] + [
-            re.sub(r'[\\/*?:\[\]]', '_', club_name)[:31] for club_name in clubs_from_summary
-        ]
-        for sheet_name in sheets_to_adjust:
-            if sheet_name in workbook.sheetnames:
-                adjust_column_widths(workbook[sheet_name])
-        print("  Column widths adjusted.")
-
-
-        # --- 9. Reorder Sheets ---
-        print("[Step 9] Reordering sheets...")
+        # --- 8. Reorder Sheets ---
+        print("[Step 8] Reordering sheets...")
         # Order: Summary, Summary Individual, Needs Review, <Club Sheets Alphabetical>
         desired_order = [SUMMARY_SHEET_NAME, SUMMARY_INDIVIDUAL_SHEET_NAME, NEEDS_REVIEW_SHEET_NAME] + sorted([
-            re.sub(r'[\\/*?:\[\]]', '_', club_name)[:31] for club_name in clubs_from_summary
+            sheet.title for sheet in workbook.worksheets
+            if sheet.title not in [SUMMARY_SHEET_NAME, SUMMARY_INDIVIDUAL_SHEET_NAME, NEEDS_REVIEW_SHEET_NAME]
         ])
         # Create a mapping from title to sheet object
         sheets_by_title = {sheet.title: sheet for sheet in workbook._sheets}
-        # Rebuild the _sheets list in the desired order, handling potential missing sheets
+        # Rebuild the _sheets list in the desired order
         workbook._sheets = [sheets_by_title[title] for title in desired_order if title in sheets_by_title]
         print(f"  New sheet order: {[s.title for s in workbook._sheets]}")
 
 
-        # --- 10. Save Updated Workbook to Buffer ---
-        print("[Step 10] Saving updated workbook to memory buffer...")
+        # --- 9. Save Updated Workbook to Buffer ---
+        print("[Step 9] Saving updated workbook to memory buffer...")
         output_buffer = BytesIO()
         workbook.save(output_buffer)
         output_buffer.seek(0)

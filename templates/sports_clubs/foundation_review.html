@@ -1,4 +1,3 @@
-{# templates/sports_clubs/foundation_review.html #}
 {% extends "base.html" %}
 {% block title %}Review Foundation Transactions{% endblock %}
 
@@ -9,8 +8,17 @@
   <div>
     <h1 class="text-2xl font-semibold text-gray-900">Review Unmatched Foundation Transactions</h1>
     <p class="mt-1 text-sm text-gray-600">
-      Assign the following transactions to the correct Sports Club. Transactions marked as "Missing From Donor Report" could not be found in the uploaded Donor Report based on the Journal Reference number.
+      Assign the following transactions to the correct Sports Club using the dropdown. Transactions marked as "Missing From Donor Report" might require manual investigation if the description is unclear. Check donor details for clues.
     </p>
+     {# Optional: Add a download button for the *current* state of the summary,
+         though this requires generating it again based on DB state.
+         For simplicity, focusing on assigning first.
+     <div class="mt-4">
+        <a href="{{ url_for('sports_clubs.download_current_summary') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Download Current Summary
+        </a>
+     </div>
+     #}
   </div>
 
   {# --- Flash Messages --- #}
@@ -26,48 +34,52 @@
 
         <div class="px-4 py-5 sm:p-6">
           <h3 class="text-lg leading-6 font-medium text-gray-900">
-            Journal Ref: {{ transaction.journal_ref }}
+            Journal Ref: <span class="font-mono">{{ transaction.journal_ref }}</span>
           </h3>
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-2 text-sm text-gray-600">
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
             {# Transaction Details Column 1 #}
             <div class="space-y-1">
-              <div><strong>Date:</strong> {{ transaction.transaction_date.strftime('%Y-%m-%d') if transaction.transaction_date else 'N/A' }}</div>
-              <div><strong>DRS Description:</strong> {{ transaction.donor_description | default('N/A', true) }}</div>
+              <div class="text-gray-700"><strong class="font-medium text-gray-900">Date:</strong> {{ transaction.transaction_date.strftime('%Y-%m-%d') if transaction.transaction_date else 'N/A' }}</div>
+              <div class="text-gray-700"><strong class="font-medium text-gray-900">DRS Description:</strong> {{ transaction.donor_description | default('N/A', true) }}</div>
               {% if transaction.original_designation == 'Missing From Donor Report' %}
-                <div class="text-red-600"><strong>Original Designation:</strong> {{ transaction.original_designation }}</div>
+                <div class="text-red-600"><strong class="font-medium text-red-700">Original Designation:</strong> {{ transaction.original_designation }}</div>
+              {% elif transaction.original_designation %}
+                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Original Designation:</strong> {{ transaction.original_designation }}</div>
               {% else %}
-                <div><strong>Original Designation:</strong> {{ transaction.original_designation | default('N/A', true) }}</div>
+                 <div class="text-gray-500 italic"><strong class="font-medium text-gray-900">Original Designation:</strong> Not Found in Donor Report</div>
               {% endif %}
             </div>
             {# Transaction Details Column 2 #}
             <div class="space-y-1">
-                <div><strong>Contribution:</strong> ${{ "%.2f"|format(transaction.gross_amount|float) }}</div>
-                <div><strong>Fees/Charges:</strong> ${{ "%.2f"|format(transaction.fees_total|float) }}</div>
-                <div><strong>Net Amount:</strong> ${{ "%.2f"|format(transaction.net_amount|float) }}</div>
+                <div class="text-gray-700"><strong class="font-medium text-gray-900">Contribution:</strong> ${{ "%.2f"|format(transaction.gross_amount|float) }}</div>
+                <div class="text-gray-700"><strong class="font-medium text-gray-900">Fees/Charges:</strong> ${{ "%.2f"|format(transaction.fees_total|float) }}</div>
+                <div class="text-gray-700"><strong class="font-medium text-gray-900">Net Amount:</strong> ${{ "%.2f"|format(transaction.net_amount|float) }}</div>
             </div>
              {# Transaction Details Column 3 (Donor Info) #}
             <div class="space-y-1">
-                {% if transaction.original_designation == 'Missing From Donor Report' %}
-                    <div><strong>Address:</strong> N/A</div>
-                    <div><strong>Email:</strong> N/A</div>
-                {% else %}
-                    <div><strong>Address:</strong> {{ transaction.donor_city | default('N/A', true) }}, {{ transaction.donor_state | default('N/A', true) }} {{ transaction.donor_zip | default('N/A', true) }}</div>
-                    <div><strong>Email:</strong> {{ transaction.donor_email | default('N/A', true) }}</div>
-                {% endif %}
+                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Donor Address:</strong>
+                     {# Join address parts only if they are not None or 'N/A' #}
+                     {% set address_parts = [transaction.donor_city, transaction.donor_state, transaction.donor_zip] %}
+                     {% set display_address = address_parts | select('ne', 'N/A') | select('ne', None) | list | join(', ') %}
+                     {{ display_address if display_address else 'N/A' }}
+                 </div>
+                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Donor Email:</strong> {{ transaction.donor_email | default('N/A', true) }}</div>
             </div>
           </div>
 
           {# Assignment Dropdown and Button #}
-          <div class="mt-5 flex items-center space-x-4">
-            <label for="club_id_{{ transaction.id }}" class="block text-sm font-medium text-gray-700">Assign to Club:</label>
+          <div class="mt-6 flex items-center space-x-4 border-t border-gray-200 pt-4">
+            <label for="club_id_{{ transaction.id }}" class="block text-sm font-medium text-gray-700 whitespace-nowrap">Assign to Club:</label>
             <select id="club_id_{{ transaction.id }}" name="club_id" required
-                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    class="flex-grow block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
               <option value="" disabled selected>Select a Club...</option>
               {% for club in clubs %}
               <option value="{{ club.id }}">{{ club.name }}</option>
               {% endfor %}
+               {# Optionally add an "Ignore" option #}
+               {# <option value="ignore">IGNORE Transaction</option> #}
             </select>
-            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
               Assign
             </button>
           </div>
@@ -81,7 +93,7 @@
     </div>
   {% endif %}
 
-   {# Optional: Add back button or link #}
+   {# Back Button #}
    <div class="mt-6">
        <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
            &larr; Back to Reconciliation Upload
@@ -90,4 +102,3 @@
 
 </div>
 {% endblock %}
-
