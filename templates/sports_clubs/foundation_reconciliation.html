@@ -1,133 +1,142 @@
-{# templates/sports_clubs/foundation_reconciliation.html #}
 {% extends "base.html" %}
-{% block title %}Foundation Reconciliation{% endblock %}
+{% from "_formhelpers.html" import render_field %} {# Assuming you have a _formhelpers.html for WTForms #}
+
+{% block title %}Foundation Reconciliation - Sports Clubs{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Foundation Account Reconciliation</h1>
+        <div class="flex items-center">
+             <a href="{{ url_for('sports_clubs.foundation_review') }}" {# Corrected route name from foundation_review_page to foundation_review #}
+               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 011-1h6a1 1 0 110 2H8a1 1 0 01-1-1zm-1 4a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                </svg>
+                Go to Review Page
+                {# num_needs_review_db is passed from the sports_clubs.py route #}
+                {% if num_needs_review_db > 0 %} 
+                    <span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ num_needs_review_db }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </div>
 
-  {# --- Page Header --- #}
-  <div>
-    <h1 class="text-2xl font-semibold text-gray-900">Sports Club Foundation Reconciliation</h1>
-    <p class="mt-1 text-sm text-gray-600">
-      Upload the latest DRS FS Report, Donor Report, and the current Foundation Summary Excel file.
-      The application will add new transactions to the summary file, save unmatched items for review, and update the database history.
-    </p>
-  </div>
+    {# This uses num_needs_review_db from the Python route #}
+    {% if num_needs_review_db > 0 %} 
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-6 shadow-md" role="alert">
+        <div class="flex">
+            <div class="py-1">
+                <svg class="fill-current h-6 w-6 text-yellow-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 5v6h2V5H9zm0 8v2h2v-2H9z"/></svg>
+            </div>
+            <div>
+                <p class="font-bold">Attention Needed</p>
+                <p>There are <strong>{{ num_needs_review_db }}</strong> item(s) that require manual review.
+                    Please visit the <a href="{{ url_for('sports_clubs.foundation_review') }}" class="font-semibold underline hover:text-yellow-800">Review Page</a>. {# Corrected route name #}
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
-  {# --- Flash Messages Area --- #}
-  {# Handled globally in base.html, flash messages will appear here after redirect #}
+    {# Standard flash message display area #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% set alert_class = 'bg-blue-100 border-blue-500 text-blue-700' %} {# Default/Info #}
+          {% if category == 'danger' %}{% set alert_class = 'bg-red-100 border-red-500 text-red-700' %}{% endif %}
+          {% if category == 'success' %}{% set alert_class = 'bg-green-100 border-green-500 text-green-700' %}{% endif %}
+          {% if category == 'warning' %}{% set alert_class = 'bg-yellow-100 border-yellow-500 text-yellow-700' %}{% endif %}
+          <div class="{{ alert_class }} border-l-4 p-4 mb-4 rounded shadow-md" role="alert">
+            <p>{{ message }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-  {# --- Current Needs Review Count --- #}
-  <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-md">
-    <div class="flex">
-      <div class="flex-shrink-0">
-        <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 3.011-1.742 3.011H4.42c-1.53 0-2.493-1.677-1.743-3.011l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-4a1 1 0 011-1h.008a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd" />
-        </svg>
-      </div>
-      <div class="ml-3">
-        <p class="text-sm text-yellow-700">
-          There are currently <strong class="font-semibold">{{ needs_review_count }}</strong> transaction(s) in the database marked as needing review.
-          {# Only show the link if there are items to review #}
-          {% if needs_review_count > 0 %}
-          <a href="{{ url_for('sports_clubs.foundation_review') }}" class="font-medium underline text-yellow-700 hover:text-yellow-600 ml-2">
-            Go to Review Page &rarr;
-          </a>
-          {% endif %}
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl mb-8">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">Upload Files for Reconciliation</h2>
+        {# The form variable is passed from the sports_clubs.py route #}
+        <form method="POST" enctype="multipart/form-data" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
+                <div>{{ render_field(form.drs_report, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100") }}</div>
+                <div>{{ render_field(form.drs_sheet_name, class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm", placeholder="e.g., 4100-774390 or Sheet1") }}</div>
+                <div>{{ render_field(form.donor_report, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100") }}</div>
+                <div>{{ render_field(form.summary_file, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100") }}</div>
+            </div>
+            <div class="flex justify-end pt-4 border-t">
+                {{ form.submit(class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-8 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md hover:shadow-lg") }}
+            </div>
+        </form>
+    </div>
+
+    {# processing_results is populated from session.pop('last_results') in sports_clubs.py #}
+    {% if processing_results %}
+    <div class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Last Processing Attempt Details:</h3>
+        {% if processing_results.get('errors') %} {# Check if 'errors' key exists and has content #}
+            <div class="bg-red-50 border-l-4 border-red-400 text-red-700 p-3 mb-3 rounded">
+                <p class="font-medium">Errors Encountered:</p>
+                <ul class="list-disc list-inside text-sm mt-1">
+                    {% for error in processing_results.get('errors', []) %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if processing_results.get('warnings') %} {# Check if 'warnings' key exists and has content #}
+             <div class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-3 mb-3 rounded">
+                <p class="font-medium">Warnings:</p>
+                <ul class="list-disc list-inside text-sm mt-1">
+                    {% for warning in processing_results.get('warnings', []) %}
+                        <li>{{ warning }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        
+        {# Displaying counts from the processing_results dictionary #}
+        <p class="text-sm text-gray-600 mb-1">Transactions processed from DRS Report: <strong>{{ processing_results.get('processed_count', 0) }}</strong></p>
+        <p class="text-sm text-gray-600 mb-1">Duplicates found in Excel sheets (skipped): <strong>{{ processing_results.get('duplicates_sheet', 0) }}</strong></p>
+        <p class="text-sm text-gray-600 mb-1">Duplicates found in database (skipped): <strong>{{ processing_results.get('duplicates_db', 0) }}</strong></p>
+        {# The count of new transactions saved is often flashed, but can also be in results if processing_utils adds it #}
+        {# Assuming processing_utils adds 'new_transactions_db_count' to results dictionary #}
+        <p class="text-sm text-gray-600">New transactions saved to database history: <strong>{{ processing_results.get('new_transactions_db_count', 0) }}</strong></p> 
+        
+        {# Condition to show a message if no data was processed and no errors/warnings, and no download is available #}
+        {% if not processing_results.get('errors') and not processing_results.get('warnings') and processing_results.get('processed_count', 0) == 0 and not session.get('last_summary_timestamp') %}
+            <p class="mt-3 text-sm text-gray-500">No transactions were processed. This might mean the input files were empty, did not contain processable data according to the criteria, or there were no new transactions to add.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+
+    {# Download button section: visibility controlled by session.get('last_summary_timestamp') #}
+    {% if session.get('last_summary_timestamp') %}
+    <div class="mt-8 p-6 bg-green-50 border border-green-300 rounded-lg shadow-xl">
+        <h2 class="text-2xl font-semibold text-green-800 mb-4 border-b pb-2">Updated Summary Ready</h2>
+        <p class="text-green-700 mb-4"> {/* Increased bottom margin for spacing */}
+            An updated summary file was generated on: <strong>{{ session.get('last_summary_timestamp') }}</strong>.
         </p>
-      </div>
+        
+        {# Removed references to session.get('processing_summary_message_for_download') 
+           and session.get('new_transactions_db_message_for_download') 
+           as they are not set by the current sports_clubs.py.
+           The flashed messages and the "Last Processing Attempt Details" section above
+           provide the necessary context about what was processed.
+        #}
+
+        <a href="{{ url_for('sports_clubs.download_last_summary') }}" 
+           class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out text-base shadow-md hover:shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"> {# Adjusted icon vertical alignment #}
+                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            Download Updated Summary
+        </a>
     </div>
-  </div>
+    {% endif %}
 
-
-  {# --- Upload Form --- #}
-  <form method="post" enctype="multipart/form-data" class="space-y-6 bg-white p-6 shadow sm:rounded-lg border border-gray-200">
-    <fieldset>
-      <legend class="text-lg font-medium text-gray-900 mb-4">Upload Reports to Generate Updated Summary</legend>
-      {# DRS Report Upload #}
-      <div>
-        <label for="drs_report" class="block text-sm font-medium text-gray-700 mb-1">1. DRS FS Report (.xlsx)<span class="text-red-600">*</span></label>
-        <input type="file" name="drs_report" id="drs_report" required class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md shadow-sm cursor-pointer focus:outline-none focus:ring-osu-orange focus:border-osu-orange file:mr-4 file:py-2 file:px-4 file:rounded-l-md file:border-0 file:text-sm file:font-semibold file:bg-osu-orange file:text-white hover:file:bg-orange-700" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        <p class="mt-1 text-xs text-gray-500">The report containing transaction amounts (debits/credits).</p>
-      </div>
-      {# Donor Report Upload #}
-      <div class="mt-4">
-        <label for="donor_report" class="block text-sm font-medium text-gray-700 mb-1">2. Donor Report (.xlsx)<span class="text-red-600">*</span></label>
-        <input type="file" name="donor_report" id="donor_report" required class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md shadow-sm cursor-pointer focus:outline-none focus:ring-osu-orange focus:border-osu-orange file:mr-4 file:py-2 file:px-4 file:rounded-l-md file:border-0 file:text-sm file:font-semibold file:bg-osu-orange file:text-white hover:file:bg-orange-700" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        <p class="mt-1 text-xs text-gray-500">The report containing designation descriptions and donor info.</p>
-      </div>
-      {# Foundation Summary Upload #}
-      <div class="mt-4">
-        <label for="summary_file" class="block text-sm font-medium text-gray-700 mb-1">3. Current Foundation Summary File (.xlsx)<span class="text-red-600">*</span></label>
-        <input type="file" name="summary_file" id="summary_file" required class="block w-full text-sm text-gray-500 border border-gray-300 rounded-md shadow-sm cursor-pointer focus:outline-none focus:ring-osu-orange focus:border-osu-orange file:mr-4 file:py-2 file:px-4 file:rounded-l-md file:border-0 file:text-sm file:font-semibold file:bg-osu-orange file:text-white hover:file:bg-orange-700" accept=".xlsx, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-        <p class="mt-1 text-xs text-gray-500">Upload the existing summary file to be updated.</p>
-      </div>
-    </fieldset>
-    {# Submit Button #}
-    <div class="pt-5 mt-6 border-t border-gray-200">
-      <div class="flex justify-end">
-        <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-          Upload & Process Files
-        </button>
-      </div>
-    </div>
-  </form>
-
-  {# --- Section to Show After Processing --- #}
-  {# This block is only rendered if processing_complete is True (set in the GET route after a POST) #}
-  {% if processing_complete %}
-  <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mt-8 rounded-md" role="alert">
-     <div class="flex">
-       <div class="flex-shrink-0">
-          <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-          </svg>
-       </div>
-       <div class="ml-3">
-         <h3 class="text-sm font-medium text-blue-800">Processing Complete</h3>
-         <div class="mt-2 text-sm text-blue-700 space-y-1">
-           {# Display results from the last processing run #}
-           {% if last_results %}
-             <p>Added {{ last_results.get('processed', 0) }} new transaction(s) to the summary sheets.</p>
-             {% if last_results.get('duplicates_sheet', 0) > 0 %}<p>Skipped {{ last_results.get('duplicates_sheet', 0) }} duplicate(s) already present in sheets.</p>{% endif %}
-             {% if last_results.get('skipped_date_range', 0) > 0 %}<p>Skipped {{ last_results.get('skipped_date_range', 0) }} DRS rows outside Donor date range.</p>{% endif %}
-             {% if last_results.get('needs_review', 0) > 0 %}
-               <p class="font-semibold">Added {{ last_results.get('needs_review', 0) }} transaction(s) to the 'Needs Review' sheet.</p>
-             {% endif %}
-           {% else %}
-             <p>Processing finished, but no detailed results were stored in session.</p>
-           {% endif %}
-         </div>
-         {# Action Buttons #}
-         <div class="mt-4">
-           <div class="-mx-2 -my-1.5 flex flex-wrap gap-4">
-             {# Download Button - Only show if a buffer is available #}
-             {% if download_available %}
-               <a href="{{ url_for('sports_clubs.download_last_summary') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                  <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
-                  </svg>
-                 Download Updated Summary
-               </a>
-             {% else %}
-                {# Optionally show a disabled state or hide completely #}
-                <span class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-100 cursor-not-allowed" title="No file generated or available">
-                    <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                    Download Unavailable
-                </span>
-             {% endif %}
-             {# Review Button - Only show if the *last processing run* added items to review #}
-             {% if last_results and last_results.get('needs_review', 0) > 0 %}
-               <a href="{{ url_for('sports_clubs.foundation_review') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
-                 Go to Review Page ({{ last_results.get('needs_review', 0) }})
-               </a>
-             {% endif %}
-           </div>
-         </div>
-       </div>
-     </div>
-  </div>
-  {% endif %}
-
-</div> {# End main container #}
+</div>
 {% endblock %}
