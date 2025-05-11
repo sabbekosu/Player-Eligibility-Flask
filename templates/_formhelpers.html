@@ -1,15 +1,22 @@
 {# This macro renders a Flask-WTF field with Bootstrap/Tailwind-friendly styling options #}
-{% macro render_field(field, label_visible=True, class="", placeholder="", **kwargs) %} {# Changed true to True #}
+{% macro render_field(field, label_visible=True, html_class="", placeholder=None, extra_attrs=None) %}
     <div class="mb-4 form-group"> {# Basic grouping, you can add more specific classes #}
         {% if label_visible and field.label %}
             {{ field.label(class="block text-sm font-medium text-gray-700 mb-1") }}
         {% endif %}
         
-        {# Add the class and placeholder to the field widget #}
-        {% if placeholder %}
-            {{ field(class=class, placeholder=placeholder, **kwargs) }}
+        {# Determine the effective placeholder: use the provided value or 'omit' if None #}
+        {% set effective_placeholder = placeholder if placeholder is not none else omit %}
+
+        {# Call the field widget:
+           - 'class' is always passed.
+           - 'placeholder' is passed with its value or 'omit'.
+           - '**extra_attrs' are unpacked only if extra_attrs is a dictionary.
+        #}
+        {% if extra_attrs is not none and extra_attrs is mapping %}
+            {{ field(class=html_class, placeholder=effective_placeholder, **extra_attrs) }}
         {% else %}
-            {{ field(class=class, **kwargs) }}
+            {{ field(class=html_class, placeholder=effective_placeholder) }}
         {% endif %}
 
         {% if field.errors %}
@@ -27,7 +34,7 @@
 {% endmacro %}
 
 {# A more specific macro for rendering file fields with Tailwind styling #}
-{% macro render_file_field(field, label_visible=True, help_text="") %} {# Changed true to True #}
+{% macro render_file_field(field, label_visible=True, help_text="") %} 
 <div class="mb-4">
     {% if label_visible and field.label %}
     <label for="{{ field.id }}" class="block text-sm font-medium text-gray-700 mb-1">{{ field.label.text }}</label>
@@ -47,6 +54,6 @@
 {% endmacro %}
 
 {# A simple macro for submit buttons #}
-{% macro render_submit_field(field, class="") %}
+{% macro render_submit_field(field, class="") %} 
     {{ field(class=class if class else "bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline") }}
 {% endmacro %}

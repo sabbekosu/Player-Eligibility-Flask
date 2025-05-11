@@ -8,14 +8,13 @@
     <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-200">
         <h1 class="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Foundation Account Reconciliation</h1>
         <div class="flex items-center">
-             <a href="{{ url_for('sports_clubs.foundation_review') }}" {# Corrected route name from foundation_review_page to foundation_review #}
+             <a href="{{ url_for('sports_clubs.foundation_review') }}"
                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                     <path fill-rule="evenodd" d="M4 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 011-1h6a1 1 0 110 2H8a1 1 0 01-1-1zm-1 4a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
                 </svg>
                 Go to Review Page
-                {# num_needs_review_db is passed from the sports_clubs.py route #}
                 {% if num_needs_review_db > 0 %} 
                     <span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">{{ num_needs_review_db }}</span>
                 {% endif %}
@@ -23,7 +22,6 @@
         </div>
     </div>
 
-    {# This uses num_needs_review_db from the Python route #}
     {% if num_needs_review_db > 0 %} 
     <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-6 shadow-md" role="alert">
         <div class="flex">
@@ -33,18 +31,17 @@
             <div>
                 <p class="font-bold">Attention Needed</p>
                 <p>There are <strong>{{ num_needs_review_db }}</strong> item(s) that require manual review.
-                    Please visit the <a href="{{ url_for('sports_clubs.foundation_review') }}" class="font-semibold underline hover:text-yellow-800">Review Page</a>. {# Corrected route name #}
+                    Please visit the <a href="{{ url_for('sports_clubs.foundation_review') }}" class="font-semibold underline hover:text-yellow-800">Review Page</a>.
                 </p>
             </div>
         </div>
     </div>
     {% endif %}
 
-    {# Standard flash message display area #}
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
-          {% set alert_class = 'bg-blue-100 border-blue-500 text-blue-700' %} {# Default/Info #}
+          {% set alert_class = 'bg-blue-100 border-blue-500 text-blue-700' %} 
           {% if category == 'danger' %}{% set alert_class = 'bg-red-100 border-red-500 text-red-700' %}{% endif %}
           {% if category == 'success' %}{% set alert_class = 'bg-green-100 border-green-500 text-green-700' %}{% endif %}
           {% if category == 'warning' %}{% set alert_class = 'bg-yellow-100 border-yellow-500 text-yellow-700' %}{% endif %}
@@ -57,14 +54,17 @@
 
     <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl mb-8">
         <h2 class="text-2xl font-semibold text-gray-700 mb-6 border-b pb-3">Upload Files for Reconciliation</h2>
-        {# The form variable is passed from the sports_clubs.py route #}
         <form method="POST" enctype="multipart/form-data" novalidate>
             {{ form.hidden_tag() }}
+            {# The grid layout might need adjustment now that one field is removed #}
+            {# For simplicity, keeping the grid but one cell will be effectively empty or fields can span #}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
-                <div>{{ render_field(form.drs_report, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100") }}</div>
-                <div>{{ render_field(form.drs_sheet_name, class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm", placeholder="e.g., 4100-774390 or Sheet1") }}</div>
-                <div>{{ render_field(form.donor_report, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100") }}</div>
-                <div>{{ render_field(form.summary_file, class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100") }}</div>
+                <div>{{ render_field(form.drs_report, html_class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100") }}</div>
+                {# Removed DRS Sheet Name field from here #}
+                {# This div can be removed or used for other layout purposes if needed #}
+                <div></div> {# Empty div to maintain grid structure, or adjust grid-cols if only 3 items #}
+                <div>{{ render_field(form.donor_report, html_class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100") }}</div>
+                <div>{{ render_field(form.summary_file, html_class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100") }}</div>
             </div>
             <div class="flex justify-end pt-4 border-t">
                 {{ form.submit(class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 px-8 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md hover:shadow-lg") }}
@@ -72,11 +72,10 @@
         </form>
     </div>
 
-    {# processing_results is populated from session.pop('last_results') in sports_clubs.py #}
     {% if processing_results %}
     <div class="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg shadow-md">
         <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Last Processing Attempt Details:</h3>
-        {% if processing_results.get('errors') %} {# Check if 'errors' key exists and has content #}
+        {% if processing_results.get('errors') %} 
             <div class="bg-red-50 border-l-4 border-red-400 text-red-700 p-3 mb-3 rounded">
                 <p class="font-medium">Errors Encountered:</p>
                 <ul class="list-disc list-inside text-sm mt-1">
@@ -86,7 +85,7 @@
                 </ul>
             </div>
         {% endif %}
-        {% if processing_results.get('warnings') %} {# Check if 'warnings' key exists and has content #}
+        {% if processing_results.get('warnings') %} 
              <div class="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-3 mb-3 rounded">
                 <p class="font-medium">Warnings:</p>
                 <ul class="list-disc list-inside text-sm mt-1">
@@ -97,40 +96,27 @@
             </div>
         {% endif %}
         
-        {# Displaying counts from the processing_results dictionary #}
         <p class="text-sm text-gray-600 mb-1">Transactions processed from DRS Report: <strong>{{ processing_results.get('processed_count', 0) }}</strong></p>
         <p class="text-sm text-gray-600 mb-1">Duplicates found in Excel sheets (skipped): <strong>{{ processing_results.get('duplicates_sheet', 0) }}</strong></p>
         <p class="text-sm text-gray-600 mb-1">Duplicates found in database (skipped): <strong>{{ processing_results.get('duplicates_db', 0) }}</strong></p>
-        {# The count of new transactions saved is often flashed, but can also be in results if processing_utils adds it #}
-        {# Assuming processing_utils adds 'new_transactions_db_count' to results dictionary #}
         <p class="text-sm text-gray-600">New transactions saved to database history: <strong>{{ processing_results.get('new_transactions_db_count', 0) }}</strong></p> 
         
-        {# Condition to show a message if no data was processed and no errors/warnings, and no download is available #}
         {% if not processing_results.get('errors') and not processing_results.get('warnings') and processing_results.get('processed_count', 0) == 0 and not session.get('last_summary_timestamp') %}
             <p class="mt-3 text-sm text-gray-500">No transactions were processed. This might mean the input files were empty, did not contain processable data according to the criteria, or there were no new transactions to add.</p>
         {% endif %}
     </div>
     {% endif %}
 
-
-    {# Download button section: visibility controlled by session.get('last_summary_timestamp') #}
     {% if session.get('last_summary_timestamp') %}
     <div class="mt-8 p-6 bg-green-50 border border-green-300 rounded-lg shadow-xl">
         <h2 class="text-2xl font-semibold text-green-800 mb-4 border-b pb-2">Updated Summary Ready</h2>
-        <p class="text-green-700 mb-4"> {/* Increased bottom margin for spacing */}
+        <p class="text-green-700 mb-4"> 
             An updated summary file was generated on: <strong>{{ session.get('last_summary_timestamp') }}</strong>.
         </p>
         
-        {# Removed references to session.get('processing_summary_message_for_download') 
-           and session.get('new_transactions_db_message_for_download') 
-           as they are not set by the current sports_clubs.py.
-           The flashed messages and the "Last Processing Attempt Details" section above
-           provide the necessary context about what was processed.
-        #}
-
         <a href="{{ url_for('sports_clubs.download_last_summary') }}" 
            class="inline-flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out text-base shadow-md hover:shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"> {# Adjusted icon vertical alignment #}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-0.5" viewBox="0 0 20 20" fill="currentColor"> 
                 <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
             </svg>
             Download Updated Summary

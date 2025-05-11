@@ -370,15 +370,22 @@ def update_summary_file(drs_file_path, donor_file_path, summary_file_path):
 
                 # --- Apply Date Range Filter ---
                 if min_donor_date and max_donor_date:
-                    if not (min_donor_date <= trans_date <= max_donor_date):
-                        # Check if already counted, only increment once per unique ref skipped
-                        temp_raw_ref = None
-                        match_ref_temp = re.search(r'[ -]?([a-zA-Z0-9]{3,})$', combined_desc_ref)
-                        if match_ref_temp: temp_raw_ref = match_ref_temp.group(1).strip()
-                        elif trans_num_raw and re.search(r'\d', trans_num_raw): temp_raw_ref = trans_num_raw
-                        if temp_raw_ref and normalize_jrnl_ref(temp_raw_ref) not in transactions_by_ref: # Check if ref already added
-                            results['skipped_date_range'] += 1
-                        continue # Skip DRS rows outside the Donor report's date range
+                    try:
+                        if not (min_donor_date <= trans_date <= max_donor_date):
+                            # Check if already counted, only increment once per unique ref skipped
+                            temp_raw_ref = None
+                            match_ref_temp = re.search(r'[ -]?([a-zA-Z0-9]{3,})$', combined_desc_ref)
+                            if match_ref_temp: temp_raw_ref = match_ref_temp.group(1).strip()
+                            elif trans_num_raw and re.search(r'\d', trans_num_raw): temp_raw_ref = trans_num_raw
+                            if temp_raw_ref and normalize_jrnl_ref(temp_raw_ref) not in transactions_by_ref: # Check if ref already added
+                                results['skipped_date_range'] += 1
+                            continue # Skip DRS rows outside the Donor report's date range
+                    except TypeError as e:
+                        error_message = f"Error processing DRS row {idx + header_row_index + 1} (Date: {row.get(date_col_header)}): {e}. Check date format."
+                        logger.error(error_message, exc_info=False) # Log less verbosely here if needed
+                        results['errors'].append(error_message) # IMPORTANT
+                        results['skipped_other_error'] = results.get('skipped_other_error', 0) + 1
+                        continue
 
                 # Extract Journal Ref
                 match_ref = re.search(r'[ -]?([a-zA-Z0-9]{3,})$', combined_desc_ref)
