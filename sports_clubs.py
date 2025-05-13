@@ -342,7 +342,7 @@ def foundation_reconciliation():
                 donor_file.save(donor_path)
                 summary_file.save(summary_path)
                 files_saved = True
-                flash('Files successfully uploaded. Processing...', 'info')
+                #flash('Files successfully uploaded. Processing...', 'info')
                 current_app.logger.info("Input files saved temporarily, starting processing via update_summary_file.")
 
                 file_buffer, results_from_processing = update_summary_file(drs_path, donor_path, summary_path) 
@@ -403,7 +403,7 @@ def foundation_reconciliation():
                             try:
                                 db_session.commit()
                                 current_app.logger.info("Successfully saved new transactions to DB.")
-                                flash(f"{len(actual_new_transactions_for_db)} new transaction(s) saved to history.", "info")
+                                #flash(f"{len(actual_new_transactions_for_db)} new transaction(s) saved to history.", "info")
                             except Exception as commit_err:
                                 db_session.rollback()
                                 current_app.logger.error(f"DB commit error: {commit_err}", exc_info=True)
@@ -557,7 +557,7 @@ def foundation_manual_entry():
 
             if _update_temp_summary_after_review(new_db_transaction, assigned_club_obj): # Pass the dict with specific names
                 session['last_summary_timestamp'] = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p")
-                flash("Manual entry added to downloadable summary file.", "success")
+                #flash("Manual entry added to downloadable summary file.", "success")
             else:
                 flash("Manual entry saved to database, but failed to update the summary Excel file.", "warning")
             return redirect(url_for('.foundation_reconciliation')) 
@@ -632,7 +632,7 @@ def clear_all_review_data():
             if os.path.exists(temp_filepath):
                 try:
                     os.remove(temp_filepath)
-                    flash(f"Temporary summary file '{temp_filename_to_delete}' deleted.", "info")
+                    #flash(f"Temporary summary file '{temp_filename_to_delete}' deleted.", "info")
                     current_app.logger.info(f"Deleted temporary summary file: {temp_filepath}")
                 except OSError as e:
                     flash(f"Error deleting temporary summary file '{temp_filename_to_delete}': {e}", "warning")
@@ -681,7 +681,7 @@ def foundation_review():
                     
                     if _update_temp_summary_after_review(transaction_to_review, assigned_club_obj):
                         session['last_summary_timestamp'] = datetime.now().strftime("%Y-%m-%d %I:%M:%S %p") 
-                        flash('Downloadable summary file has been updated to reflect this review.', 'info')
+                        #flash('Downloadable summary file has been updated to reflect this review.', 'info')
                     else:
                         flash('Could not automatically update the downloadable summary file. It may not reflect this latest review.', 'warning')
         except ValueError: 
