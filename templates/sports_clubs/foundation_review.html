@@ -1,104 +1,106 @@
 {% extends "base.html" %}
-{% block title %}Review Foundation Transactions{% endblock %}
+
+{% block title %}Review Foundation Transactions - Sports Clubs{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
-
-  {# --- Page Header --- #}
-  <div>
-    <h1 class="text-2xl font-semibold text-gray-900">Review Unmatched Foundation Transactions</h1>
-    <p class="mt-1 text-sm text-gray-600">
-      Assign the following transactions to the correct Sports Club using the dropdown. Transactions marked as "Missing From Donor Report" might require manual investigation if the description is unclear. Check donor details for clues.
-    </p>
-     {# Optional: Add a download button for the *current* state of the summary,
-         though this requires generating it again based on DB state.
-         For simplicity, focusing on assigning first.
-     <div class="mt-4">
-        <a href="{{ url_for('sports_clubs.download_current_summary') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-            Download Current Summary
+<div class="container mx-auto px-4 py-8">
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 sm:mb-0">Review Foundation Transactions</h1>
+        <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}"
+           class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            Back to Reconciliation
         </a>
-     </div>
-     #}
-  </div>
+    </div>
 
-  {# --- Flash Messages --- #}
-  {# Handled in base.html #}
-
-  {# --- Review Items --- #}
-  {% if transactions %}
-    <div class="space-y-8">
-      {% for transaction in transactions %}
-      <form method="post" action="{{ url_for('sports_clubs.foundation_review') }}" class="bg-white shadow sm:rounded-lg border border-gray-200 overflow-hidden">
-        {# Hidden input for the transaction ID #}
-        <input type="hidden" name="transaction_id" value="{{ transaction.id }}">
-
-        <div class="px-4 py-5 sm:p-6">
-          <h3 class="text-lg leading-6 font-medium text-gray-900">
-            Journal Ref: <span class="font-mono">{{ transaction.journal_ref }}</span>
-          </h3>
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-            {# Transaction Details Column 1 #}
-            <div class="space-y-1">
-              <div class="text-gray-700"><strong class="font-medium text-gray-900">Date:</strong> {{ transaction.transaction_date.strftime('%Y-%m-%d') if transaction.transaction_date else 'N/A' }}</div>
-              <div class="text-gray-700"><strong class="font-medium text-gray-900">DRS Description:</strong> {{ transaction.donor_description | default('N/A', true) }}</div>
-              {% if transaction.original_designation == 'Missing From Donor Report' %}
-                <div class="text-red-600"><strong class="font-medium text-red-700">Original Designation:</strong> {{ transaction.original_designation }}</div>
-              {% elif transaction.original_designation %}
-                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Original Designation:</strong> {{ transaction.original_designation }}</div>
-              {% else %}
-                 <div class="text-gray-500 italic"><strong class="font-medium text-gray-900">Original Designation:</strong> Not Found in Donor Report</div>
-              {% endif %}
-            </div>
-            {# Transaction Details Column 2 #}
-            <div class="space-y-1">
-                <div class="text-gray-700"><strong class="font-medium text-gray-900">Contribution:</strong> ${{ "%.2f"|format(transaction.gross_amount|float) }}</div>
-                <div class="text-gray-700"><strong class="font-medium text-gray-900">Fees/Charges:</strong> ${{ "%.2f"|format(transaction.fees_total|float) }}</div>
-                <div class="text-gray-700"><strong class="font-medium text-gray-900">Net Amount:</strong> ${{ "%.2f"|format(transaction.net_amount|float) }}</div>
-            </div>
-             {# Transaction Details Column 3 (Donor Info) #}
-            <div class="space-y-1">
-                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Donor Address:</strong>
-                     {# Join address parts only if they are not None or 'N/A' #}
-                     {% set address_parts = [transaction.donor_city, transaction.donor_state, transaction.donor_zip] %}
-                     {% set display_address = address_parts | select('ne', 'N/A') | select('ne', None) | list | join(', ') %}
-                     {{ display_address if display_address else 'N/A' }}
-                 </div>
-                 <div class="text-gray-700"><strong class="font-medium text-gray-900">Donor Email:</strong> {{ transaction.donor_email | default('N/A', true) }}</div>
-            </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% set alert_class = 'bg-blue-100 border-blue-500 text-blue-700' %} 
+          {% if category == 'danger' %}{% set alert_class = 'bg-red-100 border-red-500 text-red-700' %}{% endif %}
+          {% if category == 'success' %}{% set alert_class = 'bg-green-100 border-green-500 text-green-700' %}{% endif %}
+          {% if category == 'warning' %}{% set alert_class = 'bg-yellow-100 border-yellow-500 text-yellow-700' %}{% endif %}
+          <div class="{{ alert_class }} border-l-4 p-4 mb-4 rounded shadow-md" role="alert">
+            <p>{{ message }}</p>
           </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-          {# Assignment Dropdown and Button #}
-          <div class="mt-6 flex items-center space-x-4 border-t border-gray-200 pt-4">
-            <label for="club_id_{{ transaction.id }}" class="block text-sm font-medium text-gray-700 whitespace-nowrap">Assign to Club:</label>
-            <select id="club_id_{{ transaction.id }}" name="club_id" required
-                    class="flex-grow block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-              <option value="" disabled selected>Select a Club...</option>
-              {% for club in clubs %}
-              <option value="{{ club.id }}">{{ club.name }}</option>
-              {% endfor %}
-               {# Optionally add an "Ignore" option #}
-               {# <option value="ignore">IGNORE Transaction</option> #}
-            </select>
-            <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Assign
-            </button>
-          </div>
+    {% if not transactions %}
+        <div class="bg-blue-50 border-l-4 border-blue-400 text-blue-700 p-4 rounded-lg shadow-md" role="alert">
+            <div class="flex">
+                <div class="py-1"><svg class="fill-current h-6 w-6 text-blue-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zM9 11v4h2v-4H9zm0-3V5h2v3H9z"/></svg></div>
+                <div>
+                    <p class="font-bold">All Clear!</p>
+                    <p>There are currently no transactions needing review.</p>
+                </div>
+            </div>
         </div>
-      </form>
-      {% endfor %}
-    </div>
-  {% else %}
-    <div class="bg-white shadow sm:rounded-lg border border-gray-200 px-4 py-5 sm:p-6">
-      <p class="text-center text-gray-500">No transactions currently need review.</p>
-    </div>
-  {% endif %}
-
-   {# Back Button #}
-   <div class="mt-6">
-       <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-500">
-           &larr; Back to Reconciliation Upload
-       </a>
-   </div>
-
+    {% else %}
+        <div class="space-y-6">
+            {% for transaction in transactions %}
+            <div class="bg-white p-5 rounded-lg shadow-lg border border-gray-200">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+                    <div class="md:col-span-2 space-y-2">
+                        <h3 class="text-lg font-semibold text-gray-700">
+                            Transaction: <span class="font-mono text-blue-600">{{ transaction.journal_ref or transaction.id }}</span>
+                        </h3>
+                        <p class="text-sm text-gray-600">
+                            <strong class="text-gray-700">Date:</strong> {{ transaction.transaction_date.strftime('%m/%d/%Y') if transaction.transaction_date else 'N/A' }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            <strong class="text-gray-700">DRS Description:</strong> {{ transaction.drs_description or 'N/A' }}
+                        </p>
+                        <p class="text-sm text-gray-600">
+                            <strong class="text-gray-700">Original Designation (Donor):</strong> 
+                            <span class="{{ 'text-red-600 font-semibold' if not transaction.original_designation or 'NOT FOUND' in transaction.original_designation else 'text-gray-800' }}">
+                                {{ transaction.original_designation or 'MISSING FROM DONOR REPORT' }}
+                            </span>
+                        </p>
+                        <div class="flex space-x-4 text-sm">
+                            <p class="text-gray-600"><strong class="text-gray-700">Contribution:</strong> <span class="text-green-600">{{ "${:,.2f}".format(transaction.gross_amount) if transaction.gross_amount else '$0.00' }}</span></p>
+                            <p class="text-gray-600"><strong class="text-gray-700">Fees/Offset:</strong> <span class="text-red-600">{{ "${:,.2f}".format(transaction.fees_total) if transaction.fees_total else '$0.00' }}</span></p>
+                            <p class="text-gray-600"><strong class="text-gray-700">Net:</strong> <span class="font-semibold {{ 'text-green-700' if transaction.net_amount > 0 else 'text-red-700' }}">{{ "${:,.2f}".format(transaction.net_amount) if transaction.net_amount is not none else '$0.00' }}</span></p>
+                        </div>
+                         {% if transaction.notes %}
+                            <p class="text-sm text-gray-500 mt-1 italic"><strong class="text-gray-600">Notes:</strong> {{ transaction.notes }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="md:col-span-1">
+                        <form method="POST" action="{{ url_for('sports_clubs.foundation_review') }}" class="space-y-3">
+                            {{ csrf_token() if csrf_token else '' }} {# Add CSRF token if your app uses Flask-WTF CSRF protection globally #}
+                            <input type="hidden" name="transaction_id" value="{{ transaction.id }}">
+                            <div>
+                                <label for="club_id_{{ transaction.id }}" class="block text-sm font-medium text-gray-700 mb-1">Assign to Club:</label>
+                                {# Corrected: Check 'clubs' variable passed from the route #}
+                                {% if clubs %} 
+                                    <select name="club_id" id="club_id_{{ transaction.id }}" required
+                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm">
+                                        <option value="" disabled selected>-- Select a Club --</option>
+                                        {# Corrected: Loop over 'clubs' variable #}
+                                        {% for club in clubs %} 
+                                            <option value="{{ club.id }}">{{ club.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <p class="text-sm text-red-500">No active clubs found in the database for assignment.</p> {# Updated message #}
+                                {% endif %}
+                            </div>
+                            <button type="submit"
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:opacity-50"
+                                    {# Corrected: Disable button if 'clubs' is empty #}
+                                    {% if not clubs %}disabled{% endif %}>
+                                Assign & Reconcile
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 </div>
 {% endblock %}

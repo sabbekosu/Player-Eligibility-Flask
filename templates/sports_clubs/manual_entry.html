@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_formhelpers.html" import render_field %}
+
+{% block title %}Manual Foundation Entry - Sports Clubs{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6 pb-4 border-b">
+        <h1 class="text-3xl font-bold text-gray-800">Manual Foundation Transaction Entry</h1>
+        <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}"
+           class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2 -mt-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+            Back to Reconciliation
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          {% set alert_class = 'bg-blue-100 border-blue-500 text-blue-700' %} 
+          {% if category == 'danger' %}{% set alert_class = 'bg-red-100 border-red-500 text-red-700' %}{% endif %}
+          {% if category == 'success' %}{% set alert_class = 'bg-green-100 border-green-500 text-green-700' %}{% endif %}
+          {% if category == 'warning' %}{% set alert_class = 'bg-yellow-100 border-yellow-500 text-yellow-700' %}{% endif %}
+          <div class="{{ alert_class }} border-l-4 p-4 mb-4 rounded shadow-md" role="alert">
+            <p>{{ message }}</p>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% if not form.club_name.choices %}
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded-lg shadow-md" role="alert">
+        <p class="font-bold">Club List Unavailable</p>
+        <p>Cannot add manual entry because the list of clubs could not be loaded. Please ensure a summary file has been processed on the main <a href="{{ url_for('sports_clubs.foundation_reconciliation') }}" class="font-semibold underline hover:text-yellow-800">Reconciliation Page</a> first.</p>
+    </div>
+    {% else %}
+    <div class="bg-white p-6 md:p-8 rounded-lg shadow-xl">
+        <form method="POST" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>{{ render_field(form.transaction_type, html_class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm") }}</div>
+                <div>{{ render_field(form.transaction_date, html_class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm") }}</div>
+                <div>{{ render_field(form.journal_ref, html_class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm", placeholder="Optional (e.g., JR12345)") }}</div>
+                <div>{{ render_field(form.name_description, html_class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm", placeholder="Donor Name or Expense Detail") }}</div>
+                <div>{{ render_field(form.amount, html_class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm", placeholder="e.g., 100.00") }}</div>
+                <div>{{ render_field(form.club_name, html_class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm") }}</div>
+                <div class="md:col-span-2">{{ render_field(form.notes, html_class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm", placeholder="Optional notes about this transaction...", extra_attrs={'rows': '3'}) }}</div>
+            </div>
+            <div class="flex justify-end pt-6 border-t mt-6">
+                {{ form.submit(class="bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-8 rounded-lg focus:outline-none focus:shadow-outline transition duration-150 ease-in-out shadow-md hover:shadow-lg") }}
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

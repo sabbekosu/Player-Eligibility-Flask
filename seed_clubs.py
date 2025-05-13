@@ -8,52 +8,51 @@ from sqlalchemy.exc import IntegrityError
 clubs_to_seed = [
     # --- Active Clubs (Based on user list) ---
     {"name": "Archery Club", "is_active": True},
-    {"name": "Badminton Club", "is_active": True}, # Added
+    {"name": "Badminton Club", "is_active": True}, 
     {"name": "Baseball Club", "is_active": True},
     {"name": "Cycling Club", "is_active": True},
-    {"name": "Disc Golf Club", "is_active": True}, # Renamed
-    {"name": "Dodgeball Club", "is_active": True}, # Renamed
-    {"name": "Equestrain Dressage Club", "is_active": True}, # Renamed (Note: Typo in 'Equestrian'?)
-    {"name": "Equestrian Event", "is_active": True}, # Renamed
-    {"name": "Equestrian Hunter-Jumper", "is_active": True}, # Renamed
-    {"name": "Equestrian Polo Club", "is_active": True}, # Renamed
-    {"name": "Fishing Club", "is_active": True}, # Renamed (was Bass Fishing)
+    {"name": "Disc Golf Club", "is_active": True},
+    {"name": "Dodgeball Club", "is_active": True},
+    {"name": "Equestrain Dressage Club", "is_active": True},
+    {"name": "Equestrian Event", "is_active": True},
+    {"name": "Equestrian Hunter-Jumper", "is_active": True},
+    {"name": "Equestrian Polo Club", "is_active": True},
+    {"name": "Fishing Club", "is_active": True},
     {"name": "Gymnastics Club", "is_active": True},
     {"name": "Indoor Rock Climbing", "is_active": True},
-    {"name": "Intercollegiate Horse Show Association", "is_active": True}, # Renamed (was IHSA Equestrian)
+    {"name": "Intercollegiate Horse Show Association", "is_active": True},
     {"name": "Judo Club", "is_active": True},
-    {"name": "Karate Club", "is_active": True}, # Added
-    {"name": "Kendo Club", "is_active": True}, # Renamed
-    {"name": "Marksmanship Club", "is_active": True}, # Added
-    {"name": "Men's Lacrosse Club", "is_active": True}, # Renamed
-    {"name": "Men's Rugby Club", "is_active": True}, # Renamed
-    {"name": "Men's Soccer Club", "is_active": True}, # Renamed
+    {"name": "Karate Club", "is_active": True},
+    {"name": "Kendo Club", "is_active": True},
+    {"name": "Marksmanship Club", "is_active": True},
+    {"name": "Men's Lacrosse Club", "is_active": True},
+    {"name": "Men's Rugby Club", "is_active": True},
+    {"name": "Men's Soccer Club", "is_active": True},
     {"name": "Men's Ultimate Disc Club", "is_active": True},
-    {"name": "Men's Volleyball Club", "is_active": True}, # Renamed
+    {"name": "Men's Volleyball Club", "is_active": True},
     {"name": "Men's Water Polo Club", "is_active": True},
-    {"name": "Pistol Club", "is_active": True}, # Renamed
     {"name": "Racquetball Club", "is_active": True},
-    {"name": "Rifle Club", "is_active": True},
     {"name": "Running Club", "is_active": True},
     {"name": "Sailing Club", "is_active": True},
-    {"name": "Sport Club Program", "is_active": True}, # Kept from previous update
-    {"name": "Stock Horse Club", "is_active": True}, # Renamed
-    {"name": "Swim Club", "is_active": True}, # Added
+    {"name": "Sport Club Program", "is_active": True},
+    {"name": "Stock Horse Club", "is_active": True},
+    {"name": "Swim Club", "is_active": True},
     {"name": "Table Tennis Club", "is_active": True},
     {"name": "Taekwondo Club", "is_active": True},
-    {"name": "Tennis Club", "is_active": True}, # Kept separate active one
+    {"name": "Tennis Club", "is_active": True},
     {"name": "Triathlon Club", "is_active": True},
-    {"name": "Women's Lacrosse Club", "is_active": True}, # Renamed
-    {"name": "Women's Rugby Club", "is_active": True}, # Renamed
-    {"name": "Women's Soccer Club", "is_active": True}, # Renamed
-    {"name": "Women's Ultimate Disc Club", "is_active": True}, # Renamed (was Women's Ultimate)
-    {"name": "Women's Volleyball Club", "is_active": True}, # Renamed
-    {"name": "Women's Water Polo Club", "is_active": True}, # Renamed (was Women's Water Polo)
+    {"name": "Women's Lacrosse Club", "is_active": True},
+    {"name": "Women's Rugby Club", "is_active": True},
+    {"name": "Women's Soccer Club", "is_active": True},
+    {"name": "Women's Ultimate Disc Club", "is_active": True},
+    {"name": "Women's Volleyball Club", "is_active": True},
+    {"name": "Women's Water Polo Club", "is_active": True},
 
     # --- Inactive Clubs (Based on previous request) ---
     {"name": "Bowling Club", "is_active": False},
     {"name": "Equestrian Drill", "is_active": False},
-    {"name": "OSU Tennis Club", "is_active": False}, # Kept separate inactive one
+    {"name": "Pistol Club", "is_active": False},
+    {"name": "Rifle Club", "is_active": False}
 
 ]
 
